@@ -1,0 +1,6 @@
+@GruYaApi_HostAddress = http://localhost:5082
+
+GET {{GruYaApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
