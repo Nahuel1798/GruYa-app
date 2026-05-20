@@ -1,0 +1,14 @@
+namespace GruYaApi.DTOs.Response
+{
+    public class LocationResponse
+    {
+        public int Id { get; set; }
+
+        public decimal Latitude { get; set; }
+
+        public decimal Longitude { get; set; }
+
+        public string Address { get; set; } = null!;
+    }
+}
+
