@@ -16,7 +16,6 @@ namespace GruYaApi.DTOs.Response
 
         public string? AvatarUrl { get; set; }
 
-        public string phone { get; set; } = null!;
+        public string Phone { get; set; } = null!;
     }
 }
-

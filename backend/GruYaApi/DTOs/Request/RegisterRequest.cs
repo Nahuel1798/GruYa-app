@@ -1,18 +1,23 @@
 using System.ComponentModel.DataAnnotations;
+
 namespace GruYaApi.DTOs.Requests
 {
     public class RegisterRequest
     {
         [Required]
-        public required string Nombre { get; set; }
+        public required string FirstName { get; set; }
+
         [Required]
-        public required string Apellido { get; set; }
+        public required string LastName { get; set; }
+
         [Required]
         public required string Email { get; set; }
+
         [Required]
-        public required string Contrasena { get; set; }
-        public string? Telefono { get; set; }
-        public string? Rol { get; set; }
-        public string? Avatar { get; set; }
+        public required string Password { get; set; }
+
+        public string? Phone { get; set; }
+
+        public int RoleId { get; set; }
     }
 }
