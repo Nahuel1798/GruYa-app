@@ -3,8 +3,11 @@ using GruYaApi.Models;
 
 namespace GruYaApi.DTOs.Request
 {
-    public class CreateVehicleRequest
+    public class UpdateVehicleRequest
     {
+        [Required]
+        public int Id { get; set; }
+
         [Required]
         public VehicleType Type { get; set; }
 
