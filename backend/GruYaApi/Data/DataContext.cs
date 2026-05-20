@@ -1,7 +1,7 @@
 using GruYaApi.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace ConAlambreApi.Data
+namespace GruYaApi.Data
 {
     public class DataContext : DbContext
     {

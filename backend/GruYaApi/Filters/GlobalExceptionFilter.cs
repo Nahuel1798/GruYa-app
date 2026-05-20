@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
-namespace ConAlambreApi.Filters
+namespace GruYaApi.Filters
 {
     public class GlobalExceptionFilter : IExceptionFilter
     {
