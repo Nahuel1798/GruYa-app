@@ -10,8 +10,6 @@ namespace GruYaApi.DTOs.Response
 
         public string Email { get; set; } = null!;
 
-        public string Password { get; set; } = null!;
-
         public RoleResponse Role { get; set; } = null!;
 
         public string? AvatarUrl { get; set; }

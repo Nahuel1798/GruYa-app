@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using GruYaApi.Models;
 
-namespace GruYaApi.DTOs.Request
+namespace GruYaApi.DTOs.Requests
 {
     public class ServiceRequest
     {
@@ -28,4 +28,3 @@ namespace GruYaApi.DTOs.Request
         public User? Provider { get; set; }
     }
 }
-

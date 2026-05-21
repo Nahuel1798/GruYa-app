@@ -2,8 +2,11 @@ using System.ComponentModel.DataAnnotations;
 
 namespace GruYaApi.DTOs.Requests
 {
-    public class CreateLocationRequest
+    public class UpdateLocationRequest
     {
+        [Required]
+        public int Id { get; set; }
+
         [Required]
         public decimal Latitude { get; set; }
 

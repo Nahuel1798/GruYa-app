@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace GruYaApi.DTOs.Request
+namespace GruYaApi.DTOs.Requests
 {
     public class CreateRoleRequest
     {
@@ -8,4 +8,3 @@ namespace GruYaApi.DTOs.Request
         public string Name { get; set; } = null!;
     }
 }
-

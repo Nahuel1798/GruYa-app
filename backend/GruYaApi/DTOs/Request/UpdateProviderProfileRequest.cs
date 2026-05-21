@@ -3,8 +3,11 @@ using GruYaApi.Models;
 
 namespace GruYaApi.DTOs.Requests
 {
-    public class CreateProviderProfileRequest
+    public class UpdateProviderProfileRequest
     {
+        [Required]
+        public int Id { get; set; }
+
         [Required]
         public int UserId { get; set; }
 
@@ -12,6 +15,6 @@ namespace GruYaApi.DTOs.Requests
         public ServiceType ServiceType { get; set; }
 
         [Required]
-        public CreateLocationRequest Location { get; set; } = null!;
+        public UpdateLocationRequest Location { get; set; } = null!;
     }
 }

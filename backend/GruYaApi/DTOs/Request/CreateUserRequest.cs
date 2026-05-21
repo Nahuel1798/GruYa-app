@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using GruYaApi.Models;
 
-namespace GruYaApi.Models
+namespace GruYaApi.DTOs.Requests
 {
     public class CreateUserRequest
     {

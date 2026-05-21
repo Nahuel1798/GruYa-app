@@ -9,11 +9,18 @@ namespace GruYaApi.Models
 
         [Required]
         public User User { get; set; } = null!;
+
+        [Required]
+        public int UserId { get; set; }
+
         [Required]
         public ServiceType ServiceType { get; set; }
+
         [Required]
         public Location Location { get; set; } = null!;
+
         [Required]
         public bool IsAvailable { get; set; }
     }
 }
+

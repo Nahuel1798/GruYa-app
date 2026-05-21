@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using GruYaApi.Models;
 
-namespace GruYaApi.DTOs.Request
+namespace GruYaApi.DTOs.Requests
 {
     public class CreateVehicleRequest
     {

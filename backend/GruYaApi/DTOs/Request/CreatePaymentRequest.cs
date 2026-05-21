@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using GruYaApi.Models;
 
-namespace GruYaApi.DTOs.Request
+namespace GruYaApi.DTOs.Requests
 {
     public class CreatePaymentRequest
     {
@@ -12,4 +12,3 @@ namespace GruYaApi.DTOs.Request
         public PaymentMethod Method { get; set; }
     }
 }
-

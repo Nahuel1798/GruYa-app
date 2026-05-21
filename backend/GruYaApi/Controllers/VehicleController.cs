@@ -1,5 +1,5 @@
 using GruYaApi.Data;
-using GruYaApi.DTOs.Request;
+using GruYaApi.DTOs.Requests;
 using GruYaApi.DTOs.Response;
 using GruYaApi.Models;
 using Mapster;
@@ -25,8 +25,8 @@ namespace GruYaApi.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<VehicleResponse>>> GetVehicles()
         {
-            var vehicles = await _context.Vehicles
-                .AsNoTracking()
+            var vehicles = await _context
+                .Vehicles.AsNoTracking()
                 .ProjectToType<VehicleResponse>()
                 .ToListAsync();
 
@@ -37,18 +37,15 @@ namespace GruYaApi.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<VehicleResponse>> GetVehicle(int id)
         {
-            var vehicle = await _context.Vehicles
-                .AsNoTracking()
+            var vehicle = await _context
+                .Vehicles.AsNoTracking()
                 .Where(v => v.Id == id)
                 .ProjectToType<VehicleResponse>()
                 .FirstOrDefaultAsync();
 
             if (vehicle == null)
             {
-                return NotFound(new
-                {
-                    message = "Vehículo no encontrado"
-                });
+                return NotFound(new { message = "Vehículo no encontrado" });
             }
 
             return Ok(vehicle);
@@ -58,13 +55,12 @@ namespace GruYaApi.Controllers
         [HttpPost("create")]
         public async Task<ActionResult<VehicleResponse>> CreateVehicle(CreateVehicleRequest request)
         {
-            var existPlate = await _context.Vehicles.AnyAsync(v => v.LicensePlate == request.LicensePlate);
+            var existPlate = await _context.Vehicles.AnyAsync(v =>
+                v.LicensePlate == request.LicensePlate
+            );
             if (existPlate)
             {
-                return BadRequest(new
-                {
-                    message = "La placa ya existe"
-                });
+                return BadRequest(new { message = "La placa ya existe" });
             }
 
             var vehicle = request.Adapt<Vehicle>();
@@ -77,41 +73,29 @@ namespace GruYaApi.Controllers
 
         // PUT: api/vehicles/5
         [HttpPut("{id}")]
-        public async Task<ActionResult> UpdateVehicle(
-            int id,
-            CreateVehicleRequest request)
+        public async Task<ActionResult> UpdateVehicle(int id, CreateVehicleRequest request)
         {
             var vehicle = await _context.Vehicles.FindAsync(id);
 
             if (vehicle == null)
             {
-                return NotFound(new
-                {
-                    message = "Vehículo no encontrado"
-                });
+                return NotFound(new { message = "Vehículo no encontrado" });
             }
 
-            var existsPlate = await _context.Vehicles
-                .AnyAsync(v =>
-                    v.LicensePlate == request.LicensePlate &&
-                    v.Id != id);
+            var existsPlate = await _context.Vehicles.AnyAsync(v =>
+                v.LicensePlate == request.LicensePlate && v.Id != id
+            );
 
             if (existsPlate)
             {
-                return BadRequest(new
-                {
-                    message = "La patente ya existe"
-                });
+                return BadRequest(new { message = "La patente ya existe" });
             }
 
             request.Adapt(vehicle);
 
             await _context.SaveChangesAsync();
 
-            return Ok(new
-            {
-                message = "Vehículo actualizado correctamente"
-            });
+            return Ok(new { message = "Vehículo actualizado correctamente" });
         }
 
         // DELETE: api/vehicles/5
@@ -122,19 +106,14 @@ namespace GruYaApi.Controllers
 
             if (vehicle == null)
             {
-                return NotFound(new
-                {
-                    message = "Vehículo no encontrado"
-                });
+                return NotFound(new { message = "Vehículo no encontrado" });
             }
 
             _context.Vehicles.Remove(vehicle);
             await _context.SaveChangesAsync();
 
-            return Ok(new
-            {
-                message = "Vehículo eliminado correctamente"
-            });
+            return Ok(new { message = "Vehículo eliminado correctamente" });
         }
     }
 }
+
