@@ -1,6 +1,5 @@
 using GruYaApi.Data;
 using GruYaApi.DTOs.Requests;
-using GruYaApi.DTOs.Response;
 using GruYaApi.DTOs.Responses;
 using GruYaApi.Models;
 using GruYaApi.Service;

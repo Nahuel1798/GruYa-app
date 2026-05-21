@@ -1,4 +1,4 @@
-namespace GruYaApi.DTOs.Response
+namespace GruYaApi.DTOs.Responses
 {
     public class RoleResponse
     {
@@ -7,4 +7,3 @@ namespace GruYaApi.DTOs.Response
         public string Name { get; set; } = null!;
     }
 }
-

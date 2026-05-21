@@ -1,4 +1,4 @@
-namespace GruYaApi.DTOs.Response
+namespace GruYaApi.DTOs.Responses
 {
     public class UserResponse
     {

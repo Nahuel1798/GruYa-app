@@ -1,6 +1,6 @@
 using GruYaApi.Models;
 
-namespace GruYaApi.DTOs.Response
+namespace GruYaApi.DTOs.Responses
 {
     public class VehicleResponse
     {
@@ -19,4 +19,3 @@ namespace GruYaApi.DTOs.Response
         public string Color { get; set; } = null!;
     }
 }
-

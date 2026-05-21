@@ -1,6 +1,6 @@
 using GruYaApi.Models;
 
-namespace GruYaApi.DTOs.Response
+namespace GruYaApi.DTOs.Responses
 {
     public class PaymentResponse
     {
@@ -13,4 +13,3 @@ namespace GruYaApi.DTOs.Response
         public DateTime Date { get; set; }
     }
 }
-

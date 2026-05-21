@@ -1,6 +1,6 @@
 using GruYaApi.Data;
 using GruYaApi.DTOs.Requests;
-using GruYaApi.DTOs.Response;
+using GruYaApi.DTOs.Responses;
 using GruYaApi.Models;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
@@ -12,11 +12,11 @@ namespace GruYaApi.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class VehicleController : ControllerBase
+    public class VehiclesController : ControllerBase
     {
         private readonly DataContext _context;
 
-        public VehicleController(DataContext context)
+        public VehiclesController(DataContext context)
         {
             _context = context;
         }
@@ -52,7 +52,7 @@ namespace GruYaApi.Controllers
         }
 
         // POST: api/vehicles/create
-        [HttpPost("create")]
+        [HttpPost]
         public async Task<ActionResult<VehicleResponse>> CreateVehicle(CreateVehicleRequest request)
         {
             var existPlate = await _context.Vehicles.AnyAsync(v =>
@@ -116,4 +116,3 @@ namespace GruYaApi.Controllers
         }
     }
 }
-

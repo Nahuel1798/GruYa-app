@@ -1,6 +1,6 @@
 using GruYaApi.Models;
 
-namespace GruYaApi.DTOs.Response
+namespace GruYaApi.DTOs.Responses
 {
     public class ProviderProfileResponse
     {
@@ -15,4 +15,3 @@ namespace GruYaApi.DTOs.Response
         public bool IsAvailable { get; set; }
     }
 }
-

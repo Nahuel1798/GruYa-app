@@ -1,11 +1,11 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using GruYaApi.Data;
 using GruYaApi.Filters;
 using GruYaApi.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,12 +13,25 @@ var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
+
 // Servicios
 builder.Services.AddScoped<GlobalExceptionFilter>();
-builder.Services.AddControllers(options => options.Filters.AddService<GlobalExceptionFilter>());
+
+builder
+    .Services.AddControllers(options => options.Filters.AddService<GlobalExceptionFilter>())
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<HashService>();
+builder
+    .Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
 // PostgreSQL
 

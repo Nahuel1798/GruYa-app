@@ -1,4 +1,4 @@
-namespace GruYaApi.DTOs.Response
+namespace GruYaApi.DTOs.Responses
 {
     public class LocationResponse
     {
@@ -11,4 +11,3 @@ namespace GruYaApi.DTOs.Response
         public string Address { get; set; } = null!;
     }
 }
-

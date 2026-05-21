@@ -20,7 +20,6 @@ namespace GruYaApi.Models
         public Location Location { get; set; } = null!;
 
         [Required]
-        public bool IsAvailable { get; set; }
+        public bool IsAvailable { get; set; } = true;
     }
 }
-

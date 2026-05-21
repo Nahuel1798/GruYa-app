@@ -1,6 +1,6 @@
 using GruYaApi.Models;
 
-namespace GruYaApi.DTOs.Response
+namespace GruYaApi.DTOs.Responses
 {
     public class ServiceRequestResponse
     {
@@ -21,4 +21,3 @@ namespace GruYaApi.DTOs.Response
         public User? Provider { get; set; }
     }
 }
-
