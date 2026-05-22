@@ -9,12 +9,12 @@ namespace GruYaApi.Models
 
         [Required]
         public ServiceType ServiceType { get; set; }
-        
+
         [Required]
         public ServiceRequestStatus Status { get; set; }
 
-        [Required]
-        public Payment Payment { get; set; } = null!;
+        // [Required]
+        // public Payment Payment { get; set; } = null!;
 
         [Required]
         public Vehicle? Vehicle { get; set; }
@@ -27,3 +27,4 @@ namespace GruYaApi.Models
         public User? Provider { get; set; }
     }
 }
+
