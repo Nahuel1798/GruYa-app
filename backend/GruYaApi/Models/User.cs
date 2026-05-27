@@ -15,7 +15,7 @@ namespace GruYaApi.Models
 
         public string Password { get; set; } = null!;
 
-        public Role Role { get; set; } = null!;
+        public Role Role { get; set; }
 
         public string? AvatarUrl { get; set; }
 

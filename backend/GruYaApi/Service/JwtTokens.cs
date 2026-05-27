@@ -26,7 +26,7 @@ public class JwtTokenService
         {
             Subject = new ClaimsIdentity(new Claim[]{
                     new Claim(ClaimTypes.Name, usuario.Email),
-                    new Claim(ClaimTypes.Role, usuario.Role.Name),
+                    new Claim(ClaimTypes.Role, usuario.Role.ToString()),
                     new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
                     new Claim(ClaimTypes.Email, usuario.Email),
                 }),

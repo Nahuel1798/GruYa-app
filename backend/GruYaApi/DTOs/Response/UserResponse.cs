@@ -1,3 +1,5 @@
+using GruYaApi.Models;
+
 namespace GruYaApi.DTOs.Responses
 {
     public class UserResponse
@@ -10,7 +12,7 @@ namespace GruYaApi.DTOs.Responses
 
         public string Email { get; set; } = null!;
 
-        public RoleResponse Role { get; set; } = null!;
+        public Role Role { get; set; }
 
         public string? AvatarUrl { get; set; }
 

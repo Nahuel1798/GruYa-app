@@ -96,23 +96,6 @@ namespace GruYaApi.Migrations
                     b.ToTable("ProviderProfiles");
                 });
 
-            modelBuilder.Entity("GruYaApi.Models.Role", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Roles");
-                });
-
             modelBuilder.Entity("GruYaApi.Models.ServiceRequest", b =>
                 {
                     b.Property<int>("Id")
@@ -125,9 +108,6 @@ namespace GruYaApi.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("LocationId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("PaymentId")
                         .HasColumnType("integer");
 
                     b.Property<int?>("ProviderId")
@@ -147,8 +127,6 @@ namespace GruYaApi.Migrations
                     b.HasIndex("ClientId");
 
                     b.HasIndex("LocationId");
-
-                    b.HasIndex("PaymentId");
 
                     b.HasIndex("ProviderId");
 
@@ -188,12 +166,10 @@ namespace GruYaApi.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("RoleId")
+                    b.Property<int>("Role")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("RoleId");
 
                     b.ToTable("Users");
                 });
@@ -267,12 +243,6 @@ namespace GruYaApi.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("GruYaApi.Models.Payment", "Payment")
-                        .WithMany()
-                        .HasForeignKey("PaymentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("GruYaApi.Models.User", "Provider")
                         .WithMany()
                         .HasForeignKey("ProviderId");
@@ -287,22 +257,9 @@ namespace GruYaApi.Migrations
 
                     b.Navigation("Location");
 
-                    b.Navigation("Payment");
-
                     b.Navigation("Provider");
 
                     b.Navigation("Vehicle");
-                });
-
-            modelBuilder.Entity("GruYaApi.Models.User", b =>
-                {
-                    b.HasOne("GruYaApi.Models.Role", "Role")
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Role");
                 });
 #pragma warning restore 612, 618
         }

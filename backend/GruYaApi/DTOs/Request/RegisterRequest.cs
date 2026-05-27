@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using GruYaApi.Models;
 
 namespace GruYaApi.DTOs.Requests
 {
@@ -18,6 +19,6 @@ namespace GruYaApi.DTOs.Requests
 
         public string? Phone { get; set; }
 
-        public int RoleId { get; set; }
+        public Role RoleId { get; set; }
     }
 }

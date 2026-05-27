@@ -38,10 +38,9 @@ namespace GruYaApi.Controllers
             var existe = _context.Users.Any(u => u.Email == request.Email);
             if (existe)
                 return BadRequest(new { message = "Email esta registrado" });
-            var role = _context.Roles.FirstOrDefault(r => r.Id == request.RoleId);
 
             var nuevoUsuario = request.Adapt<User>();
-            nuevoUsuario.Role = role!;
+            nuevoUsuario.Role = request.RoleId;
             nuevoUsuario.Password = _hashService.HashPassword(request.Password);
 
             _context.Users.Add(nuevoUsuario);
@@ -59,7 +58,7 @@ namespace GruYaApi.Controllers
         public async Task<IActionResult> Login(LoginRequest request)
         {
             var user = await _context
-                .Users.Include(u => u.Role)
+                .Users
                 .FirstOrDefaultAsync(u => u.Email == request.Email);
 
             if (user == null || !_hashService.VerifyPassword(request.Password, user.Password))
