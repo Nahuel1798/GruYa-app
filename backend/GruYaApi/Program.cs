@@ -17,6 +17,8 @@ builder.Services.AddRouting(options => options.LowercaseUrls = true);
 // Servicios
 builder.Services.AddScoped<GlobalExceptionFilter>();
 
+builder.WebHost.UseUrls("http://0.0.0.0:5082");
+
 builder
     .Services.AddControllers(options => options.Filters.AddService<GlobalExceptionFilter>())
     .AddJsonOptions(options =>
