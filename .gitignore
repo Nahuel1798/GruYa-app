@@ -41,7 +41,6 @@ ScaffoldingReadMe.txt
 appsettings.Development.json
 
 # ConAlambre project specific
-backend/GruYaApi/Migrations/
 backend/GruYaApi/wwwroot/
 .atl/
 resources_con_alambre/
