@@ -101,6 +101,16 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+// Aplicar migraciones al iniciar solo si se solicita explicitamente
+if (configuration.GetValue<bool>("ApplyMigrationsOnStartup"))
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<DataContext>();
+        db.Database.Migrate();
+    }
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
