@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using GruYaApi.Data;
 using GruYaApi.DTOs.Requests;
 using GruYaApi.DTOs.Responses;
@@ -57,9 +58,7 @@ namespace GruYaApi.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginRequest request)
         {
-            var user = await _context
-                .Users
-                .FirstOrDefaultAsync(u => u.Email == request.Email);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
 
             if (user == null || !_hashService.VerifyPassword(request.Password, user.Password))
                 return Unauthorized(new { message = "Email o contraseña incorrectos" });
@@ -67,6 +66,18 @@ namespace GruYaApi.Controllers
             var token = _jwtTokenService.GenerateToken(user);
 
             return Ok(new AuthResponse { Token = token, User = user.Adapt<UserResponse>() });
+        }
+
+        [HttpGet("perfil")]
+        public async Task<IActionResult> Perfil()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            var user = await _context
+                .Users.ProjectToType<UserResponse>()
+                .FirstOrDefaultAsync(u => u.Id.ToString() == userId);
+
+            return Ok(user);
         }
 
         // POST: api/auth/logout
