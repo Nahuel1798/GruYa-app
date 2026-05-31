@@ -68,7 +68,9 @@ namespace GruYaApi.Controllers
             return Ok(new AuthResponse { Token = token, User = user.Adapt<UserResponse>() });
         }
 
-        [HttpGet("perfil")]
+        // GET: api/auth/profile
+
+        [HttpGet("profile")]
         public async Task<IActionResult> Perfil()
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
