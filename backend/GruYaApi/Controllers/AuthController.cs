@@ -103,21 +103,19 @@ namespace GruYaApi.Controllers
         [HttpPut("editprofile")]
         public async Task<IActionResult> EditProfile(UpdateUserRequest request)
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
             var user = await _context.Users.FindAsync(userId);
             if (user == null)
                 return NotFound(new { message = "Usuario no encontrado" });
 
-            var emailExists = await _context.Users
-                .AnyAsync(u => u.Email == request.Email && u.Id != user.Id);
+            var emailExists = await _context.Users.AnyAsync(u =>
+                u.Email == request.Email && u.Id != user.Id
+            );
 
             if (emailExists)
             {
-                return BadRequest(new
-                {
-                    message = "El email ya está registrado"
-                });
+                return BadRequest(new { message = "El email ya está registrado" });
             }
 
             user.FirstName = request.FirstName;
