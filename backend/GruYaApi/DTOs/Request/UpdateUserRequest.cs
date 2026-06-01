@@ -15,9 +15,6 @@ namespace GruYaApi.DTOs.Requests
         public string Email { get; set; }
 
         [Required]
-        public IFormFile AvatarFile { get; set; }
-
-        [Required]
         public string Phone { get; set; }
     }
 }
