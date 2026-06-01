@@ -82,6 +82,22 @@ namespace GruYaApi.Controllers
             return Ok(user);
         }
 
+        [HttpPut("role")]
+        public async Task<IActionResult> EditRole(Role role)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+                return NotFound(new { message = "Usuario no encontrado" });
+
+            user.Role = role;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Perfil actualizado exitosamente" });
+        }
+
         // PUT: api/auth/editprofile
         [HttpPut("editprofile")]
         public async Task<IActionResult> EditProfile(UpdateUserRequest request)
