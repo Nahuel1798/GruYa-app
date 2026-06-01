@@ -82,6 +82,26 @@ namespace GruYaApi.Controllers
             return Ok(user);
         }
 
+        // PUT: api/auth/editprofile
+        [HttpPut("editprofile")]
+        public async Task<IActionResult> EditProfile(UpdateUserRequest request)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+                return NotFound(new { message = "Usuario no encontrado" });
+
+            user.FirstName = request.FirstName;
+            user.LastName = request.LastName;
+            user.Email = request.Email;
+            user.Phone = request.Phone;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Perfil actualizado exitosamente" });
+        }
+
         // POST: api/auth/logout
         [HttpPost("logout")]
         public IActionResult Logout()
