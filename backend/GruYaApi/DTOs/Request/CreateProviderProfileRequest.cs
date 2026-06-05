@@ -6,10 +6,10 @@ namespace GruYaApi.DTOs.Requests
     public class CreateProviderProfileRequest
     {
         [Required]
-        public int UserId { get; set; }
+        public ServiceType ServiceType { get; set; }
 
         [Required]
-        public ServiceType ServiceType { get; set; }
+        public string Description { get; set; } = null!;
 
         [Required]
         public CreateLocationRequest Location { get; set; } = null!;

@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using GruYaApi.Data;
 using GruYaApi.Filters;
 using GruYaApi.Service;
+using GruYaApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -39,6 +40,7 @@ builder
 
 var connection = configuration["ConnectionStrings:PostgreSQL"];
 builder.Services.AddDbContext<DataContext>(options => options.UseNpgsql(connection));
+builder.Services.AddHttpClient<OsrmService>();
 
 var key =
     configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is not configured");

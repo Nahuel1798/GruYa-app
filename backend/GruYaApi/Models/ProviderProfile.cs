@@ -11,6 +11,9 @@ namespace GruYaApi.Models
         public User User { get; set; } = null!;
 
         [Required]
+        public string Description { get; set; } = null!;
+
+        [Required]
         public int UserId { get; set; }
 
         [Required]
