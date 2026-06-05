@@ -12,8 +12,5 @@ namespace GruYaApi.Models
 
         [Required]
         public decimal Longitude { get; set; }
-
-        [Required]
-        public string Address { get; set; } = null!;
     }
 }
