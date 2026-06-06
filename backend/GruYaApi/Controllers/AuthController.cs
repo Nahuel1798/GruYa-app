@@ -41,7 +41,6 @@ namespace GruYaApi.Controllers
                 return BadRequest(new { message = "Email esta registrado" });
 
             var nuevoUsuario = request.Adapt<User>();
-            nuevoUsuario.Role = request.RoleId;
             nuevoUsuario.Password = _hashService.HashPassword(request.Password);
 
             _context.Users.Add(nuevoUsuario);

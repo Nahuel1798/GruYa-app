@@ -95,7 +95,7 @@ namespace GruYaApi.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Vehículo actualizado correctamente" });
+            return Ok(vehicle.Adapt<VehicleResponse>());
         }
 
         // DELETE: api/vehicles/5

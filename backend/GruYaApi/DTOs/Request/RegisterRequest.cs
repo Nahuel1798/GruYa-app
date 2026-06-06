@@ -19,6 +19,6 @@ namespace GruYaApi.DTOs.Requests
 
         public string? Phone { get; set; }
 
-        public Role RoleId { get; set; }
+        public Role Role { get; set; }
     }
 }
