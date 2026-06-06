@@ -12,7 +12,7 @@ namespace GruYaApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    
     public class ProviderProfilesController : ControllerBase
     {
         private readonly DataContext _context;
