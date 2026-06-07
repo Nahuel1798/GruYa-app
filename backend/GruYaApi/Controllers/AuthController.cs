@@ -134,5 +134,11 @@ namespace GruYaApi.Controllers
             // En JWT, el logout se maneja en el cliente eliminando el token
             return Ok(new { message = "Logout exitoso" });
         }
+
+        [HttpGet("validate")]
+        public IActionResult ValidateJwt()
+        {
+            return Ok();
+        }
     }
 }
