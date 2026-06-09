@@ -1,5 +1,6 @@
 using GruYaApi.Data;
 using GruYaApi.DTOs.Requests;
+using GruYaApi.DTOs.Response;
 using GruYaApi.DTOs.Responses;
 using GruYaApi.Models;
 using GruYaApi.Services;
@@ -7,6 +8,7 @@ using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
 
 namespace GruYaApi.Controllers
 {
@@ -149,6 +151,42 @@ namespace GruYaApi.Controllers
                 DistanceKm = Math.Round(bestDistance, 2),
                 EtaMinutes = Math.Round(bestEta)
             });
+        }
+
+        // GET: api/services/providers-nearby?latitude=-33.3&longitude=-66.3&rangeKm=20
+        [HttpGet("providers-nearby")]
+        public async Task<ActionResult<List<ProviderLocationResponse>>> NearbyProviders(
+            decimal latitude,
+            decimal longitude,
+            decimal rangeKm = 20)
+        {
+            var providers = await _context.ProviderProfiles
+                .Include(p => p.Location)
+                .Where(p => p.IsAvailable)
+                .ToListAsync();
+
+            var result = providers
+                .Where(p =>
+                    DistanceInKm(
+                        latitude,
+                        longitude,
+                        p.Location.Latitude,
+                        p.Location.Longitude
+                    ) <= rangeKm
+                )
+                .Select(p => new ProviderLocationResponse
+                {
+                    Id = p.Id,
+                    UserId = p.UserId,
+                    Description = p.Description,
+                    ServiceType = p.ServiceType,
+                    Latitude = p.Location.Latitude,
+                    Longitude = p.Location.Longitude,
+                    IsAvailable = p.IsAvailable
+                })
+                .ToList();
+
+            return Ok(result);
         }
 
         // GET: api/nearby
