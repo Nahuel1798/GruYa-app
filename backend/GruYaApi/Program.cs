@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using GruYaApi.Data;
 using GruYaApi.Filters;
+using GruYaApi.Hubs;
 using GruYaApi.Service;
 using GruYaApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -17,6 +18,7 @@ builder.Services.AddRouting(options => options.LowercaseUrls = true);
 
 // Servicios
 builder.Services.AddScoped<GlobalExceptionFilter>();
+builder.Services.AddSignalR();
 
 builder.WebHost.UseUrls("http://0.0.0.0:5082");
 
@@ -29,6 +31,7 @@ builder
 
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<HashService>();
+builder.Services.AddSingleton<ISessionService, SessionService>();
 builder
     .Services.AddControllers()
     .AddJsonOptions(options =>
@@ -102,6 +105,8 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+app.MapHub<LocationHub>("/locationHub");
 
 // Aplicar migraciones al iniciar solo si se solicita explicitamente
 if (configuration.GetValue<bool>("ApplyMigrationsOnStartup"))
