@@ -8,15 +8,14 @@ namespace GruYaApi.DTOs.Requests
         [Required]
         public ServiceType ServiceType { get; set; }
 
+        public IssueType IssueType { get; set; }
+
         [Required]
         public int VehicleId { get; set; }
 
         [Required]
         public CreateLocationRequest Location { get; set; } = null!;
 
-        [Required]
-        public int ClientId { get; set; }
-
-        public int ProviderId { get; set; }
+        public int? ProviderId { get; set; }
     }
 }

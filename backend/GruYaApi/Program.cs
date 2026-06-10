@@ -18,6 +18,7 @@ builder.Services.AddRouting(options => options.LowercaseUrls = true);
 
 // Servicios
 builder.Services.AddScoped<GlobalExceptionFilter>();
+builder.Services.AddScoped<UserExists>();
 builder.Services.AddSignalR();
 
 builder.WebHost.UseUrls("http://0.0.0.0:5082");

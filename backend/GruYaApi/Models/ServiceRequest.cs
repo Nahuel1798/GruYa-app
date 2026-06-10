@@ -11,6 +11,9 @@ namespace GruYaApi.Models
         public ServiceType ServiceType { get; set; }
 
         [Required]
+        public IssueType IssueType { get; set; }
+
+        [Required]
         public ServiceRequestStatus Status { get; set; }
 
         // [Required]

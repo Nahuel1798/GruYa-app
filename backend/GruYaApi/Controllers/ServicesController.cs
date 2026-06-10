@@ -2,6 +2,7 @@ using GruYaApi.Data;
 using GruYaApi.DTOs.Requests;
 using GruYaApi.DTOs.Response;
 using GruYaApi.DTOs.Responses;
+using GruYaApi.Filters;
 using GruYaApi.Models;
 using GruYaApi.Services;
 using Mapster;
@@ -9,12 +10,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-
 namespace GruYaApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    [ServiceFilter(typeof(UserExists))]
     public class ServicesController : ControllerBase
     {
         private readonly DataContext _context;
@@ -59,38 +60,31 @@ namespace GruYaApi.Controllers
 
         // POST: api/services/request
         // Crea una nueva solicitud de servicio, asignando automáticamente el proveedor más cercano disponible según la ubicación del cliente y el vehículo, y calculando la distancia y el tiempo estimado de llegada
-        [HttpPost("request")]
+        [HttpPost("request_old")]
         public async Task<IActionResult> RequestService(
-            [FromBody] CreateServiceRequestRequest request)
+            [FromBody] CreateServiceRequestRequest request
+        )
         {
-            var client = await _context.Users
-                .FirstOrDefaultAsync(u => u.Id == request.ClientId);
+            var idUsuario = (int)HttpContext.Items["idUsuario"]!;
+            var client = await _context.Users.FirstOrDefaultAsync(u => u.Id == idUsuario);
 
             if (client == null)
-                return NotFound(new
-                {
-                    Message = "Cliente no encontrado"
-                });
+                return NotFound(new { Message = "Cliente no encontrado" });
 
-            var vehicle = await _context.Vehicles
-                .FirstOrDefaultAsync(v => v.Id == request.VehicleId);
+            var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v =>
+                v.Id == request.VehicleId
+            );
 
             if (vehicle == null)
-                return NotFound(new
-                {
-                    Message = "Vehículo no encontrado"
-                });
+                return NotFound(new { Message = "Vehículo no encontrado" });
 
-            var providers = await _context.ProviderProfiles
-                .Include(p => p.User)
+            var providers = await _context
+                .ProviderProfiles.Include(p => p.User)
                 .Where(p => p.IsAvailable)
                 .ToListAsync();
 
             if (!providers.Any())
-                return BadRequest(new
-                {
-                    Message = "No hay proveedores disponibles"
-                });
+                return BadRequest(new { Message = "No hay proveedores disponibles" });
 
             ProviderProfile? bestProvider = null;
             double bestDistance = double.MaxValue;
@@ -121,10 +115,7 @@ namespace GruYaApi.Controllers
             }
 
             if (bestProvider == null)
-                return BadRequest(new
-                {
-                    Message = "No fue posible encontrar una grúa"
-                });
+                return BadRequest(new { Message = "No fue posible encontrar una grúa" });
 
             var location = request.Location.Adapt<Location>();
 
@@ -136,21 +127,84 @@ namespace GruYaApi.Controllers
                 Client = client,
                 Provider = bestProvider.User,
                 Vehicle = vehicle,
-                Location = location
+                Location = location,
             };
 
             _context.ServiceRequests.Add(serviceRequest);
 
             await _context.SaveChangesAsync();
 
-            return Ok(new
+            return Ok(
+                new
+                {
+                    ServiceRequestId = serviceRequest.Id,
+                    ProviderId = bestProvider.Id,
+                    ProviderName = bestProvider.User.FirstName + " " + bestProvider.User.LastName,
+                    DistanceKm = Math.Round(bestDistance, 2),
+                    EtaMinutes = Math.Round(bestEta),
+                }
+            );
+        }
+
+        // POST: api/services/request
+        // Crea una solicitud de auxilio. Si se especifica un providerId, asigna ese proveedor.
+        // Si no, la solicitud queda sin asignar para que los proveedores cercanos puedan aceptarla.
+        [HttpPost("request")]
+        public async Task<IActionResult> RequestAssistance(
+            [FromBody] CreateServiceRequestRequest request
+        )
+        {
+            var idUsuario = (int)HttpContext.Items["idUsuario"]!;
+            var client = await _context.Users.FirstOrDefaultAsync(u => u.Id == idUsuario);
+            if (client == null)
+                return NotFound(new { Message = "Cliente no encontrado" });
+
+            var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v =>
+                v.Id == request.VehicleId
+            );
+            if (vehicle == null)
+                return NotFound(new { Message = "Vehículo no encontrado" });
+
+            User? provider = null;
+
+            if (request.ProviderId.HasValue)
             {
-                ServiceRequestId = serviceRequest.Id,
-                ProviderId = bestProvider.Id,
-                ProviderName = bestProvider.User.FirstName + " " + bestProvider.User.LastName,
-                DistanceKm = Math.Round(bestDistance, 2),
-                EtaMinutes = Math.Round(bestEta)
-            });
+                var providerProfile = await _context
+                    .ProviderProfiles.Include(p => p.User)
+                    .FirstOrDefaultAsync(p => p.Id == request.ProviderId.Value && p.IsAvailable);
+
+                if (providerProfile == null)
+                    return Conflict(
+                        new { Message = "El prestador solicitado no está disponible" }
+                    );
+
+                provider = providerProfile.User;
+            }
+
+            var location = request.Location.Adapt<Location>();
+            _context.Locations.Add(location);
+
+            var serviceRequest = new ServiceRequest
+            {
+                ServiceType = request.ServiceType,
+                IssueType = request.IssueType,
+                Status = ServiceRequestStatus.Pendiente,
+                Client = client,
+                Provider = provider,
+                Vehicle = vehicle,
+                Location = location,
+            };
+
+            _context.ServiceRequests.Add(serviceRequest);
+            await _context.SaveChangesAsync();
+
+            return Ok(
+                new
+                {
+                    ServiceRequestId = serviceRequest.Id,
+                    HasProvider = provider != null,
+                }
+            );
         }
 
         // GET: api/services/providers-nearby?latitude=-33.3&longitude=-66.3&rangeKm=20
@@ -158,21 +212,18 @@ namespace GruYaApi.Controllers
         public async Task<ActionResult<List<ProviderLocationResponse>>> NearbyProviders(
             decimal latitude,
             decimal longitude,
-            decimal rangeKm = 20)
+            decimal rangeKm = 20
+        )
         {
-            var providers = await _context.ProviderProfiles
-                .Include(p => p.Location)
+            var providers = await _context
+                .ProviderProfiles.Include(p => p.Location)
                 .Where(p => p.IsAvailable)
                 .ToListAsync();
 
             var result = providers
                 .Where(p =>
-                    DistanceInKm(
-                        latitude,
-                        longitude,
-                        p.Location.Latitude,
-                        p.Location.Longitude
-                    ) <= rangeKm
+                    DistanceInKm(latitude, longitude, p.Location.Latitude, p.Location.Longitude)
+                    <= rangeKm
                 )
                 .Select(p => new ProviderLocationResponse
                 {
@@ -182,7 +233,7 @@ namespace GruYaApi.Controllers
                     ServiceType = p.ServiceType,
                     Latitude = p.Location.Latitude,
                     Longitude = p.Location.Longitude,
-                    IsAvailable = p.IsAvailable
+                    IsAvailable = p.IsAvailable,
                 })
                 .ToList();
 
@@ -195,28 +246,25 @@ namespace GruYaApi.Controllers
         public async Task<IActionResult> NearbyServices(
             decimal latitude,
             decimal longitude,
-            decimal rangeKm = 20)
+            decimal rangeKm = 20
+        )
         {
-            var services = await _context.ServiceRequests
-                .Include(s => s.Location)
+            var services = await _context
+                .ServiceRequests.Include(s => s.Location)
                 .Include(s => s.Client)
                 .ToListAsync();
 
             var result = services
                 .Where(s =>
-                    DistanceInKm(
-                        latitude,
-                        longitude,
-                        s.Location.Latitude,
-                        s.Location.Longitude
-                    ) <= rangeKm
+                    DistanceInKm(latitude, longitude, s.Location.Latitude, s.Location.Longitude)
+                    <= rangeKm
                 )
                 .Select(s => new
                 {
                     s.Id,
                     s.ServiceType,
                     Latitude = s.Location.Latitude,
-                    Longitude = s.Location.Longitude
+                    Longitude = s.Location.Longitude,
                 });
 
             return Ok(result);
@@ -280,7 +328,6 @@ namespace GruYaApi.Controllers
 
             return Ok(new { message = "Vehículo actualizado correctamente" });
         }
-
 
         // DELETE: api/vehicles/5
         // Elimina un vehículo específico, verificando que el vehículo exista antes de eliminarlo.
