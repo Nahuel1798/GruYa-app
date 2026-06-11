@@ -66,7 +66,6 @@ namespace GruYaApi.Controllers
             var existente = await _context
                 .ProviderProfiles
                 .Include(pp => pp.User)
-                .Include(pp => pp.Location)
                 .FirstOrDefaultAsync(pp => pp.UserId == request.UserId);
 
             if (existente == null)

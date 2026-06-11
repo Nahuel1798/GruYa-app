@@ -1,23 +1,20 @@
-using GruYaApi.Models;
-
-namespace GruYaApi.DTOs.Responses
+namespace GruYaApi.Models
 {
-    public class ServiceRequestResponse
+    public class Assistance
     {
         public int Id { get; set; }
 
         public ServiceType ServiceType { get; set; }
 
-        public ServiceRequestStatus Status { get; set; }
+        public IssueType IssueType { get; set; }
 
-        public Payment Payment { get; set; } = null!;
+        public AssistanceStatus Status { get; set; }
 
         public Vehicle? Vehicle { get; set; }
 
         public Location Location { get; set; } = null!;
 
         public User Client { get; set; } = null!;
-
         public User? Provider { get; set; }
     }
 }

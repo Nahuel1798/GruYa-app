@@ -4,7 +4,6 @@ using GruYaApi.DTOs.Response;
 using GruYaApi.DTOs.Responses;
 using GruYaApi.Filters;
 using GruYaApi.Models;
-using GruYaApi.Services;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,15 +15,13 @@ namespace GruYaApi.Controllers
     [Route("api/[controller]")]
     [Authorize]
     [ServiceFilter(typeof(UserExists))]
-    public class ServicesController : ControllerBase
+    public class AssistancesController : ControllerBase
     {
         private readonly DataContext _context;
-        private readonly OsrmService _osrmService;
 
-        public ServicesController(DataContext context, OsrmService osrmService)
+        public AssistancesController(DataContext context)
         {
             _context = context;
-            _osrmService = osrmService;
         }
 
         // Función para calcular la distancia entre dos puntos geográficos utilizando la fórmula de Haversine
@@ -57,6 +54,8 @@ namespace GruYaApi.Controllers
         {
             return degrees * (decimal)Math.PI / 180m;
         }
+
+        /*
 
         // POST: api/services/request
         // Crea una nueva solicitud de servicio, asignando automáticamente el proveedor más cercano disponible según la ubicación del cliente y el vehículo, y calculando la distancia y el tiempo estimado de llegada
@@ -146,12 +145,14 @@ namespace GruYaApi.Controllers
             );
         }
 
-        // POST: api/services/request
+        */
+
+        // POST: api/assistances/request
         // Crea una solicitud de auxilio. Si se especifica un providerId, asigna ese proveedor.
         // Si no, la solicitud queda sin asignar para que los proveedores cercanos puedan aceptarla.
         [HttpPost("request")]
         public async Task<IActionResult> RequestAssistance(
-            [FromBody] CreateServiceRequestRequest request
+            [FromBody] CreateAssistanceRequest request
         )
         {
             var idUsuario = (int)HttpContext.Items["idUsuario"]!;
@@ -181,33 +182,30 @@ namespace GruYaApi.Controllers
                 provider = providerProfile.User;
             }
 
-            var location = request.Location.Adapt<Location>();
-            _context.Locations.Add(location);
-
-            var serviceRequest = new ServiceRequest
+            var assistance = new Assistance
             {
                 ServiceType = request.ServiceType,
                 IssueType = request.IssueType,
-                Status = ServiceRequestStatus.Pendiente,
+                Status = AssistanceStatus.Pendiente,
                 Client = client,
                 Provider = provider,
                 Vehicle = vehicle,
-                Location = location,
+                Location = request.Location,
             };
 
-            _context.ServiceRequests.Add(serviceRequest);
+            _context.Assistances.Add(assistance);
             await _context.SaveChangesAsync();
 
             return Ok(
                 new
                 {
-                    ServiceRequestId = serviceRequest.Id,
+                    AssistanceId = assistance.Id,
                     HasProvider = provider != null,
                 }
             );
         }
 
-        // GET: api/services/providers-nearby?latitude=-33.3&longitude=-66.3&rangeKm=20
+        // GET: api/assistances/providers-nearby?latitude=-33.3&longitude=-66.3&rangeKm=20
         [HttpGet("providers-nearby")]
         public async Task<ActionResult<List<ProviderLocationResponse>>> NearbyProviders(
             decimal latitude,
@@ -216,7 +214,7 @@ namespace GruYaApi.Controllers
         )
         {
             var providers = await _context
-                .ProviderProfiles.Include(p => p.Location)
+                .ProviderProfiles
                 .Where(p => p.IsAvailable)
                 .ToListAsync();
 
@@ -240,7 +238,7 @@ namespace GruYaApi.Controllers
             return Ok(result);
         }
 
-        // GET: api/nearby
+        // GET: api/assistances/nearby
         // Obtiene una lista de solicitudes de servicio cercanas a una ubicación específica, filtrando por la distancia y ordenando por la distancia más cercana. La función utiliza la fórmula de Havers
         [HttpGet("nearby")]
         public async Task<IActionResult> NearbyServices(
@@ -250,8 +248,7 @@ namespace GruYaApi.Controllers
         )
         {
             var services = await _context
-                .ServiceRequests.Include(s => s.Location)
-                .Include(s => s.Client)
+                .Assistances.Include(s => s.Client)
                 .ToListAsync();
 
             var result = services
@@ -270,26 +267,17 @@ namespace GruYaApi.Controllers
             return Ok(result);
         }
 
-        // GET: api/provider
-        // Obtiene una lista de solicitudes de servicio para un proveedor específico, filtrando por el estado de la solicitud y ordenando por fecha de creación.
-
-        [HttpGet("/provider")]
-        public async Task<ActionResult<VehicleResponse>> GetWithProviderDefined()
-        {
-            return Ok();
-        }
-
         [HttpGet("{lat}/{lon}/{range}")]
-        public async Task<ActionResult<VehicleResponse>> ListRanges(
+        public async Task<ActionResult> ListRanges(
             decimal lat,
             decimal lon,
             decimal range
         )
         {
-            var services = await _context.ServiceRequests.Include(sr => sr.Location).ToListAsync();
+            var services = await _context.Assistances.ToListAsync();
             Console.WriteLine(services.Count);
 
-            foreach (ServiceRequest item in services)
+            foreach (Assistance item in services)
             {
                 Console.WriteLine(item.Id);
                 Console.WriteLine(
@@ -298,54 +286,6 @@ namespace GruYaApi.Controllers
             }
 
             return Ok();
-        }
-
-        // PUT: api/vehicles/5
-        // Actualiza los detalles de un vehículo específico, verificando que la patente no se duplique con otro vehículo existente.
-
-        [HttpPut("{id}")]
-        public async Task<ActionResult> UpdateVehicle(int id, CreateVehicleRequest request)
-        {
-            var vehicle = await _context.Vehicles.FindAsync(id);
-
-            if (vehicle == null)
-            {
-                return NotFound(new { message = "Vehículo no encontrado" });
-            }
-
-            var existsPlate = await _context.Vehicles.AnyAsync(v =>
-                v.LicensePlate == request.LicensePlate && v.Id != id
-            );
-
-            if (existsPlate)
-            {
-                return BadRequest(new { message = "La patente ya existe" });
-            }
-
-            request.Adapt(vehicle);
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new { message = "Vehículo actualizado correctamente" });
-        }
-
-        // DELETE: api/vehicles/5
-        // Elimina un vehículo específico, verificando que el vehículo exista antes de eliminarlo.
-
-        [HttpDelete("{id}")]
-        public async Task<ActionResult> DeleteVehicle(int id)
-        {
-            var vehicle = await _context.Vehicles.FindAsync(id);
-
-            if (vehicle == null)
-            {
-                return NotFound(new { message = "Vehículo no encontrado" });
-            }
-
-            _context.Vehicles.Remove(vehicle);
-            await _context.SaveChangesAsync();
-
-            return Ok(new { message = "Vehículo eliminado correctamente" });
         }
     }
 }

@@ -1,10 +1,10 @@
-using GruYaApi.DTOs.Requests;
+using GruYaApi.Models;
 
 namespace GruYaApi.Hubs
 {
     public interface ILocationClient
     {
-        Task LocationUpdated(CreateLocationRequest location);
+        Task LocationUpdated(Location location);
         Task SessionNotFound();
         Task SessionEnded();
     }

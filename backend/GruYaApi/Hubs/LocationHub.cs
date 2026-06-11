@@ -1,4 +1,4 @@
-using GruYaApi.DTOs.Requests;
+using GruYaApi.Models;
 using GruYaApi.Service;
 using Microsoft.AspNetCore.SignalR;
 
@@ -29,7 +29,7 @@ namespace GruYaApi.Hubs
             await Groups.AddToGroupAsync(Context.ConnectionId, sessionId);
         }
 
-        public async Task UpdateLocation(CreateLocationRequest location)
+        public async Task UpdateLocation(Location location)
         {
             var sessionId = await _sessions.GetSessionByConnection(Context.ConnectionId);
             if (sessionId == null)

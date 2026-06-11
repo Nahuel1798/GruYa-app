@@ -24,5 +24,7 @@ namespace GruYaApi.Models
 
         [Required]
         public bool IsAvailable { get; set; } = true;
+
+        public string? Address { get; set; }
     }
 }

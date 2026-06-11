@@ -12,7 +12,7 @@ namespace GruYaApi.DTOs.Responses
 
         public ServiceType ServiceType { get; set; }
 
-        public LocationResponse Location { get; set; } = null!;
+        public Location Location { get; set; } = null!;
 
         public bool IsAvailable { get; set; }
     }

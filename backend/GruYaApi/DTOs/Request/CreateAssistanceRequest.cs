@@ -3,7 +3,7 @@ using GruYaApi.Models;
 
 namespace GruYaApi.DTOs.Requests
 {
-    public class CreateServiceRequestRequest
+    public class CreateAssistanceRequest
     {
         [Required]
         public ServiceType ServiceType { get; set; }
@@ -14,7 +14,7 @@ namespace GruYaApi.DTOs.Requests
         public int VehicleId { get; set; }
 
         [Required]
-        public CreateLocationRequest Location { get; set; } = null!;
+        public Location Location { get; set; } = null!;
 
         public int? ProviderId { get; set; }
     }
