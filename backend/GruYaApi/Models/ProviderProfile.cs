@@ -7,6 +7,8 @@ namespace GruYaApi.Models
         [Key]
         public int Id { get; set; }
 
+        public string? CompanyName { get; set; }
+
         [Required]
         public User User { get; set; } = null!;
 

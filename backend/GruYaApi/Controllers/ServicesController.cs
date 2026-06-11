@@ -216,7 +216,9 @@ namespace GruYaApi.Controllers
         )
         {
             var providers = await _context
-                .ProviderProfiles.Include(p => p.Location)
+                .ProviderProfiles
+                .Include(p => p.User)
+                .Include(p => p.Location)
                 .Where(p => p.IsAvailable)
                 .ToListAsync();
 
@@ -229,6 +231,8 @@ namespace GruYaApi.Controllers
                 {
                     Id = p.Id,
                     UserId = p.UserId,
+                    CompanyName = p.CompanyName,
+                    Phone = p.User.Phone,
                     Description = p.Description,
                     ServiceType = p.ServiceType,
                     Latitude = p.Location.Latitude,

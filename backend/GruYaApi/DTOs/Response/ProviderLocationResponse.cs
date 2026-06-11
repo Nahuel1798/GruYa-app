@@ -6,7 +6,8 @@ namespace GruYaApi.DTOs.Response
     {
         public int Id { get; set; }
         public int UserId { get; set; }
-        public string Name { get; set; } = null!;
+        public string CompanyName { get; set; } = null!;
+        public string Phone { get; set; } = null!;
         public string Description { get; set; } = null!;
         public ServiceType ServiceType { get; set; }
         public decimal Latitude { get; set; }

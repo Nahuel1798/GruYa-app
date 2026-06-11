@@ -14,6 +14,8 @@ namespace GruYaApi.DTOs.Requests
         [Required]
         public ServiceType ServiceType { get; set; }
 
+        public string? CompanyName { get; set; }
+
         [Required]
         public UpdateLocationRequest Location { get; set; } = null!;
     }
