@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GruYaApi.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20260610151118_AgregarIssueType")]
-    partial class AgregarIssueType
+    [Migration("20260611203003_AgregarTablanuevos")]
+    partial class AgregarTablanuevos
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -73,6 +73,9 @@ namespace GruYaApi.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CompanyName")
+                        .HasColumnType("text");
 
                     b.Property<string>("Description")
                         .IsRequired()

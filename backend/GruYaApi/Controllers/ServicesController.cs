@@ -207,6 +207,60 @@ namespace GruYaApi.Controllers
             );
         }
 
+        // GET: api/services/assistance-nearby
+        [HttpGet("assistance-nearby")]
+        public async Task<IActionResult> NerbyAssistance(decimal rangekm = 20)
+        {
+            var userId = (int)HttpContext.Items["idUsuario"]!;
+
+            var provider = await _context.ProviderProfiles
+                .Include(p => p.Location)
+                .FirstOrDefaultAsync(p => p.UserId == userId);
+
+            if (provider == null)
+                return NotFound(new { Message = "Perfil de proveedor no encontrado" });
+
+            var request = await _context.ServiceRequests
+                .Include(r => r.Location)
+                .Include(r => r.Client)
+                .Include(r => r.Vehicle)
+                .Where(r => r.Status == ServiceRequestStatus.Pendiente && r.Provider == null)
+                .ToListAsync();
+            
+            var result = request
+                .Where(r =>
+                    DistanceInKm(
+                        provider.Location.Latitude,
+                        provider.Location.Longitude,
+                        r.Location.Latitude,
+                        r.Location.Longitude
+                    ) <= rangekm
+                )
+                .Select(r => new NerbyAssistanceResponse
+                {
+                    Id = r.Id,
+                    ServiceType = r.ServiceType.ToString(),
+                    IssueType = r.IssueType.ToString(),
+                    ClientName = $"{r.Client.FirstName} {r.Client.LastName}",
+                    Vehicle = $"{r.Vehicle.Brand} {r.Vehicle.Model}",
+                    Latitude = r.Location.Latitude,
+                    Longitude = r.Location.Longitude,
+                    DistanceKm = Math.Round(
+                        DistanceInKm(
+                            provider.Location.Latitude,
+                            provider.Location.Longitude,
+                            r.Location.Latitude,
+                            r.Location.Longitude
+                        ),
+                        2
+                    )
+                })
+                .OrderBy(r => r.DistanceKm)
+                .ToList();
+
+            return Ok(result);
+        }
+
         // GET: api/services/providers-nearby?latitude=-33.3&longitude=-66.3&rangeKm=20
         [HttpGet("providers-nearby")]
         public async Task<ActionResult<List<ProviderLocationResponse>>> NearbyProviders(

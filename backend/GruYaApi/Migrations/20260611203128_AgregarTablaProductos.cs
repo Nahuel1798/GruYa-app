@@ -5,24 +5,18 @@
 namespace GruYaApi.Migrations
 {
     /// <inheritdoc />
-    public partial class ActualizarProviderTable : Migration
+    public partial class AgregarTablaProductos : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "CompanyName",
-                table: "ProviderProfiles",
-                type: "text",
-                nullable: true);
+
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "CompanyName",
-                table: "ProviderProfiles");
+
         }
     }
 }
