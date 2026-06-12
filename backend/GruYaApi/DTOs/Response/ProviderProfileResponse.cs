@@ -12,6 +12,8 @@ namespace GruYaApi.DTOs.Responses
 
         public string? CompanyName { get; set; }
 
+        public string? Address { get; set; }
+
         public ServiceType ServiceType { get; set; }
 
         public LocationResponse Location { get; set; } = null!;

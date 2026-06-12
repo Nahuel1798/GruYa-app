@@ -13,6 +13,8 @@ namespace GruYaApi.DTOs.Requests
 
         public string? CompanyName { get; set; }
 
+        public string? Address { get; set; }
+
         [Required]
         public CreateLocationRequest Location { get; set; } = null!;
     }
