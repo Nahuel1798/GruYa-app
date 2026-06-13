@@ -124,7 +124,7 @@ namespace GruYaApi.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Perfil actualizado exitosamente" });
+            return Ok(user.Adapt<UserResponse>());
         }
 
         // POST: api/auth/logout

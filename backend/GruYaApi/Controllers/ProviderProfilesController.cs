@@ -55,7 +55,7 @@ namespace GruYaApi.Controllers
             _context.ProviderProfiles.Add(providerProfile);
             await _context.SaveChangesAsync();
 
-            return StatusCode(201, providerProfile);
+            return StatusCode(201, providerProfile.Adapt<ProviderProfileResponse>());
         }
 
         // PUT: api/ProviderProfiles
@@ -75,9 +75,14 @@ namespace GruYaApi.Controllers
             {
                 return NotFound(new { message = "Perfil de proveedor no encontrado" });
             }
+            var currentLocation = existente.Location;
 
             request.Adapt(existente);
 
+            if (request.Location == null)
+            {
+                existente.Location = currentLocation;
+            }
             await _context.SaveChangesAsync();
 
             return Ok(existente.Adapt<ProviderProfileResponse>());
@@ -89,7 +94,8 @@ namespace GruYaApi.Controllers
         public async Task<IActionResult> GetAll()
         {
             var profiles = await _context
-                .ProviderProfiles.Include(pp => pp.User)
+                .ProviderProfiles.AsNoTracking()
+                .Include(pp => pp.User)
                 .ProjectToType<ProviderProfileResponse>()
                 .ToListAsync();
 
@@ -103,15 +109,13 @@ namespace GruYaApi.Controllers
         {
             var idUsuario = (int)HttpContext.Items["idUsuario"]!;
             var profile = await _context
-                .ProviderProfiles.Include(pp => pp.User)
+                .ProviderProfiles.AsNoTracking()
+                .Include(pp => pp.User)
                 .ProjectToType<ProviderProfileResponse>()
                 .FirstOrDefaultAsync(pp => pp.User.Id == idUsuario);
 
             if (profile == null)
-                return NotFound();
-            Console.WriteLine("address");
-            Console.WriteLine(profile.Address);
-            Console.WriteLine("address");
+                return NotFound(new { message = "Perfil de proveedor no encontrado" });
 
             return Ok(profile);
         }
@@ -122,12 +126,13 @@ namespace GruYaApi.Controllers
         public async Task<IActionResult> GetById(int id)
         {
             var profile = await _context
-                .ProviderProfiles.Include(pp => pp.User)
+                .ProviderProfiles.AsNoTracking()
+                .Include(pp => pp.User)
                 .ProjectToType<ProviderProfileResponse>()
                 .FirstOrDefaultAsync(pp => pp.Id == id);
 
             if (profile == null)
-                return NotFound();
+                return NotFound(new { message = "Perfil de proveedor no encontrado" });
 
             return Ok(profile);
         }
