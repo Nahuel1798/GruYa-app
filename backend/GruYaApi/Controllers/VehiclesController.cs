@@ -1,6 +1,7 @@
 using GruYaApi.Data;
 using GruYaApi.DTOs.Requests;
 using GruYaApi.DTOs.Responses;
+using GruYaApi.Filters;
 using GruYaApi.Models;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
@@ -12,6 +13,7 @@ namespace GruYaApi.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    [ServiceFilter(typeof(UserExists))]
     public class VehiclesController : ControllerBase
     {
         private readonly DataContext _context;
@@ -25,8 +27,11 @@ namespace GruYaApi.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<VehicleResponse>>> GetVehicles()
         {
+            var userId = (int)HttpContext.Items["idUsuario"]!;
+
             var vehicles = await _context
                 .Vehicles.AsNoTracking()
+                .Where(v => v.UserId == userId)
                 .ProjectToType<VehicleResponse>()
                 .ToListAsync();
 
@@ -37,9 +42,11 @@ namespace GruYaApi.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<VehicleResponse>> GetVehicle(int id)
         {
+            var userId = (int)HttpContext.Items["idUsuario"]!;
+
             var vehicle = await _context
                 .Vehicles.AsNoTracking()
-                .Where(v => v.Id == id)
+                .Where(v => v.Id == id && v.UserId == userId)
                 .ProjectToType<VehicleResponse>()
                 .FirstOrDefaultAsync();
 
@@ -51,10 +58,12 @@ namespace GruYaApi.Controllers
             return Ok(vehicle);
         }
 
-        // POST: api/vehicles/create
+        // POST: api/vehicles
         [HttpPost]
         public async Task<ActionResult<VehicleResponse>> CreateVehicle(CreateVehicleRequest request)
         {
+            var userId = (int)HttpContext.Items["idUsuario"]!;
+
             var existPlate = await _context.Vehicles.AnyAsync(v =>
                 v.LicensePlate == request.LicensePlate
             );
@@ -64,6 +73,7 @@ namespace GruYaApi.Controllers
             }
 
             var vehicle = request.Adapt<Vehicle>();
+            vehicle.UserId = userId;
             _context.Vehicles.Add(vehicle);
             await _context.SaveChangesAsync();
 
@@ -75,7 +85,11 @@ namespace GruYaApi.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult> UpdateVehicle(int id, CreateVehicleRequest request)
         {
-            var vehicle = await _context.Vehicles.FindAsync(id);
+            var userId = (int)HttpContext.Items["idUsuario"]!;
+
+            var vehicle = await _context.Vehicles
+                .Where(v => v.UserId == userId)
+                .FirstOrDefaultAsync(v => v.Id == id);
 
             if (vehicle == null)
             {
@@ -102,7 +116,11 @@ namespace GruYaApi.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteVehicle(int id)
         {
-            var vehicle = await _context.Vehicles.FindAsync(id);
+            var userId = (int)HttpContext.Items["idUsuario"]!;
+
+            var vehicle = await _context.Vehicles
+                .Where(v => v.UserId == userId)
+                .FirstOrDefaultAsync(v => v.Id == id);
 
             if (vehicle == null)
             {

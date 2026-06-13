@@ -6,6 +6,8 @@ namespace GruYaApi.DTOs.Responses
     {
         public int Id { get; set; }
 
+        public int UserId { get; set; }
+
         public VehicleType Type { get; set; }
 
         public string LicensePlate { get; set; } = null!;

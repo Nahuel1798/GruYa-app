@@ -18,6 +18,14 @@ namespace GruYaApi.Data
         {
             modelBuilder.Entity<Assistance>().OwnsOne(a => a.Location);
             modelBuilder.Entity<ProviderProfile>().OwnsOne(p => p.Location);
+
+            modelBuilder.Entity<Vehicle>(entity =>
+            {
+                entity.HasOne(v => v.User)
+                    .WithMany()
+                    .HasForeignKey(v => v.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
         }
     }
 }
