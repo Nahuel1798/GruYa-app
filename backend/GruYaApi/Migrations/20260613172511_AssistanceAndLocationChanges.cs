@@ -29,12 +29,6 @@ namespace GruYaApi.Migrations
                 name: "LocationId",
                 table: "ProviderProfiles");
 
-            migrationBuilder.AddColumn<string>(
-                name: "Address",
-                table: "ProviderProfiles",
-                type: "text",
-                nullable: true);
-
             migrationBuilder.AddColumn<decimal>(
                 name: "Location_Latitude",
                 table: "ProviderProfiles",
@@ -106,10 +100,6 @@ namespace GruYaApi.Migrations
         {
             migrationBuilder.DropTable(
                 name: "Assistances");
-
-            migrationBuilder.DropColumn(
-                name: "Address",
-                table: "ProviderProfiles");
 
             migrationBuilder.DropColumn(
                 name: "Location_Latitude",

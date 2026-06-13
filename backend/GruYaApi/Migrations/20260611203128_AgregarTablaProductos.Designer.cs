@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GruYaApi.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20260531222248_AgregarTablas")]
-    partial class AgregarTablas
+    [Migration("20260611203128_AgregarTablaProductos")]
+    partial class AgregarTablaProductos
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -32,10 +32,6 @@ namespace GruYaApi.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Address")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<decimal>("Latitude")
                         .HasColumnType("numeric");
@@ -78,6 +74,13 @@ namespace GruYaApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("CompanyName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<bool>("IsAvailable")
                         .HasColumnType("boolean");
 
@@ -108,6 +111,9 @@ namespace GruYaApi.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("ClientId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IssueType")
                         .HasColumnType("integer");
 
                     b.Property<int>("LocationId")

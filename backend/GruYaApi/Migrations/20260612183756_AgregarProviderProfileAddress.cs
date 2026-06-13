@@ -5,25 +5,24 @@
 namespace GruYaApi.Migrations
 {
     /// <inheritdoc />
-    public partial class AgregarIssueType : Migration
+    public partial class AgregarProviderProfileAddress : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<int>(
-                name: "IssueType",
-                table: "ServiceRequests",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
+            migrationBuilder.AddColumn<string>(
+                name: "Address",
+                table: "ProviderProfiles",
+                type: "text",
+                nullable: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "IssueType",
-                table: "ServiceRequests");
+                name: "Address",
+                table: "ProviderProfiles");
         }
     }
 }

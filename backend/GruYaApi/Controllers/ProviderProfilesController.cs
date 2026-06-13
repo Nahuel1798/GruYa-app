@@ -1,18 +1,19 @@
+using System.Security.Claims;
 using GruYaApi.Data;
 using GruYaApi.DTOs.Requests;
 using GruYaApi.DTOs.Responses;
+using GruYaApi.Filters;
 using GruYaApi.Models;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 namespace GruYaApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    
+    [ServiceFilter(typeof(UserExists))]
     public class ProviderProfilesController : ControllerBase
     {
         private readonly DataContext _context;
@@ -28,11 +29,15 @@ namespace GruYaApi.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateProviderProfileRequest request)
         {
-            var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+            var userIdClaim = User
+                .Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)
+                ?.Value;
             if (!int.TryParse(userIdClaim, out var userId))
                 return BadRequest(new { message = "Identificador de usuario inválido" });
 
-            var existente = await _context.ProviderProfiles.FirstOrDefaultAsync(pp => pp.UserId == userId);
+            var existente = await _context.ProviderProfiles.FirstOrDefaultAsync(pp =>
+                pp.UserId == userId
+            );
             if (existente != null)
                 return BadRequest(
                     new { message = "Ya existe un perfil de proveedor para este usuario" }
@@ -57,23 +62,18 @@ namespace GruYaApi.Controllers
         // Actualiza un perfil de proveedor existente, verificando que el perfil exista antes de actualizarlo y manteniendo la relación con el usuario y la ubicación.
         [HttpPut]
         public async Task<IActionResult> UpdateProviderProfile(
-            [FromBody] UpdateProviderProfileRequest request)
+            [FromBody] UpdateProviderProfileRequest request
+        )
         {
-            var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
-            if (!int.TryParse(userIdClaim, out var userId))
-                return BadRequest(new { message = "Identificador de usuario inválido" });
+            var userId = (int)HttpContext.Items["idUsuario"]!;
 
             var existente = await _context
-                .ProviderProfiles
-                .Include(pp => pp.User)
-                .FirstOrDefaultAsync(pp => pp.UserId == request.UserId);
+                .ProviderProfiles.Include(pp => pp.User)
+                .FirstOrDefaultAsync(pp => pp.UserId == userId);
 
             if (existente == null)
             {
-                return NotFound(new
-                {
-                    message = "Perfil de proveedor no encontrado"
-                });
+                return NotFound(new { message = "Perfil de proveedor no encontrado" });
             }
 
             request.Adapt(existente);
@@ -83,33 +83,53 @@ namespace GruYaApi.Controllers
             return Ok(existente.Adapt<ProviderProfileResponse>());
         }
 
-        // GET: api/ProviderProfiles/5
-        // Obtiene un perfil de proveedor específico por su ID
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetOne(int id)
-        {
-            var providerProfile = await _context
-                .ProviderProfiles.Include(pp => pp.User)
-                .ProjectToType<ProviderProfileResponse>()
-                .FirstOrDefaultAsync(pp => pp.Id == id);
-
-            if (providerProfile == null)
-                return NotFound();
-
-            return Ok(providerProfile);
-        }
-
-        // GET: api/ProviderProfiles/user/5
-        // Obtiene un perfil de proveedor específico por el ID del usuario
+        // GET: api/ProviderProfiles
+        // Lista todos los perfiles de proveedor
         [HttpGet]
-        public async Task<IActionResult> GetALl()
+        public async Task<IActionResult> GetAll()
         {
-            var providerProfile = await _context
+            var profiles = await _context
                 .ProviderProfiles.Include(pp => pp.User)
                 .ProjectToType<ProviderProfileResponse>()
                 .ToListAsync();
 
-            return Ok(providerProfile);
+            return Ok(profiles);
+        }
+
+        // GET: api/ProviderProfiles/me
+        // Obtiene el perfil del proveedor logueado
+        [HttpGet("me")]
+        public async Task<IActionResult> GetMyProfile()
+        {
+            var idUsuario = (int)HttpContext.Items["idUsuario"]!;
+            var profile = await _context
+                .ProviderProfiles.Include(pp => pp.User)
+                .ProjectToType<ProviderProfileResponse>()
+                .FirstOrDefaultAsync(pp => pp.User.Id == idUsuario);
+
+            if (profile == null)
+                return NotFound();
+            Console.WriteLine("address");
+            Console.WriteLine(profile.Address);
+            Console.WriteLine("address");
+
+            return Ok(profile);
+        }
+
+        // GET: api/ProviderProfiles/5
+        // Obtiene un perfil específico por ID
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetById(int id)
+        {
+            var profile = await _context
+                .ProviderProfiles.Include(pp => pp.User)
+                .ProjectToType<ProviderProfileResponse>()
+                .FirstOrDefaultAsync(pp => pp.Id == id);
+
+            if (profile == null)
+                return NotFound();
+
+            return Ok(profile);
         }
     }
 }

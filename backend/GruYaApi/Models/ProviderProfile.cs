@@ -7,6 +7,10 @@ namespace GruYaApi.Models
         [Key]
         public int Id { get; set; }
 
+        public string? CompanyName { get; set; }
+
+        public string? Address { get; set; }
+
         [Required]
         public User User { get; set; } = null!;
 
@@ -24,7 +28,5 @@ namespace GruYaApi.Models
 
         [Required]
         public bool IsAvailable { get; set; } = true;
-
-        public string? Address { get; set; }
     }
 }

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GruYaApi.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20260610151118_AgregarIssueType")]
-    partial class AgregarIssueType
+    [Migration("20260613172511_AssistanceAndLocationChanges")]
+    partial class AssistanceAndLocationChanges
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,7 +25,7 @@ namespace GruYaApi.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("GruYaApi.Models.Location", b =>
+            modelBuilder.Entity("GruYaApi.Models.Assistance", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -33,15 +33,33 @@ namespace GruYaApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<decimal>("Latitude")
-                        .HasColumnType("numeric");
+                    b.Property<int>("ClientId")
+                        .HasColumnType("integer");
 
-                    b.Property<decimal>("Longitude")
-                        .HasColumnType("numeric");
+                    b.Property<int>("IssueType")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ProviderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ServiceType")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("VehicleId")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Locations");
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("ProviderId");
+
+                    b.HasIndex("VehicleId");
+
+                    b.ToTable("Assistances");
                 });
 
             modelBuilder.Entity("GruYaApi.Models.Payment", b =>
@@ -74,15 +92,18 @@ namespace GruYaApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Address")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CompanyName")
+                        .HasColumnType("text");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<bool>("IsAvailable")
                         .HasColumnType("boolean");
-
-                    b.Property<int>("LocationId")
-                        .HasColumnType("integer");
 
                     b.Property<int>("ServiceType")
                         .HasColumnType("integer");
@@ -92,53 +113,9 @@ namespace GruYaApi.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("LocationId");
-
                     b.HasIndex("UserId");
 
                     b.ToTable("ProviderProfiles");
-                });
-
-            modelBuilder.Entity("GruYaApi.Models.ServiceRequest", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ClientId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("IssueType")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("LocationId")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("ProviderId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ServiceType")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("VehicleId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ClientId");
-
-                    b.HasIndex("LocationId");
-
-                    b.HasIndex("ProviderId");
-
-                    b.HasIndex("VehicleId");
-
-                    b.ToTable("ServiceRequests");
                 });
 
             modelBuilder.Entity("GruYaApi.Models.User", b =>
@@ -216,36 +193,11 @@ namespace GruYaApi.Migrations
                     b.ToTable("Vehicles");
                 });
 
-            modelBuilder.Entity("GruYaApi.Models.ProviderProfile", b =>
-                {
-                    b.HasOne("GruYaApi.Models.Location", "Location")
-                        .WithMany()
-                        .HasForeignKey("LocationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("GruYaApi.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Location");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("GruYaApi.Models.ServiceRequest", b =>
+            modelBuilder.Entity("GruYaApi.Models.Assistance", b =>
                 {
                     b.HasOne("GruYaApi.Models.User", "Client")
                         .WithMany()
                         .HasForeignKey("ClientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("GruYaApi.Models.Location", "Location")
-                        .WithMany()
-                        .HasForeignKey("LocationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -255,17 +207,68 @@ namespace GruYaApi.Migrations
 
                     b.HasOne("GruYaApi.Models.Vehicle", "Vehicle")
                         .WithMany()
-                        .HasForeignKey("VehicleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("VehicleId");
+
+                    b.OwnsOne("GruYaApi.Models.Location", "Location", b1 =>
+                        {
+                            b1.Property<int>("AssistanceId")
+                                .HasColumnType("integer");
+
+                            b1.Property<decimal>("Latitude")
+                                .HasColumnType("numeric");
+
+                            b1.Property<decimal>("Longitude")
+                                .HasColumnType("numeric");
+
+                            b1.HasKey("AssistanceId");
+
+                            b1.ToTable("Assistances");
+
+                            b1.WithOwner()
+                                .HasForeignKey("AssistanceId");
+                        });
 
                     b.Navigation("Client");
 
-                    b.Navigation("Location");
+                    b.Navigation("Location")
+                        .IsRequired();
 
                     b.Navigation("Provider");
 
                     b.Navigation("Vehicle");
+                });
+
+            modelBuilder.Entity("GruYaApi.Models.ProviderProfile", b =>
+                {
+                    b.HasOne("GruYaApi.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsOne("GruYaApi.Models.Location", "Location", b1 =>
+                        {
+                            b1.Property<int>("ProviderProfileId")
+                                .HasColumnType("integer");
+
+                            b1.Property<decimal>("Latitude")
+                                .HasColumnType("numeric");
+
+                            b1.Property<decimal>("Longitude")
+                                .HasColumnType("numeric");
+
+                            b1.HasKey("ProviderProfileId");
+
+                            b1.ToTable("ProviderProfiles");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ProviderProfileId");
+                        });
+
+                    b.Navigation("Location")
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 #pragma warning restore 612, 618
         }

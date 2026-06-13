@@ -10,6 +10,10 @@ namespace GruYaApi.DTOs.Responses
 
         public string Description { get; set; } = null!;
 
+        public string? CompanyName { get; set; }
+
+        public string? Address { get; set; }
+
         public ServiceType ServiceType { get; set; }
 
         public Location Location { get; set; } = null!;
