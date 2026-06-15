@@ -175,9 +175,7 @@ namespace GruYaApi.Controllers
                     .FirstOrDefaultAsync(p => p.Id == request.ProviderId.Value && p.IsAvailable);
 
                 if (providerProfile == null)
-                    return Conflict(
-                        new { Message = "El prestador solicitado no está disponible" }
-                    );
+                    return Conflict(new { Message = "El prestador solicitado no está disponible" });
 
                 provider = providerProfile.User;
             }
@@ -197,34 +195,29 @@ namespace GruYaApi.Controllers
             _context.Assistances.Add(assistance);
             await _context.SaveChangesAsync();
 
-            return Ok(
-                new
-                {
-                    AssistanceId = assistance.Id,
-                    HasProvider = provider != null,
-                }
-            );
+            return Ok(new { AssistanceId = assistance.Id, HasProvider = provider != null });
         }
 
         // GET: api/assistances/assistance-nearby
         // Obtiene solicitudes de auxilio (Assistance) cercanas a un proveedor, ordenadas por distancia
         [HttpGet("assistance-nearby")]
-        public async Task<IActionResult> NerbyAssistance(decimal rangekm = 20)
+        public async Task<IActionResult> NearbyAssistance(decimal rangekm = 20)
         {
             var userId = (int)HttpContext.Items["idUsuario"]!;
 
-            var provider = await _context.ProviderProfiles
-                .FirstOrDefaultAsync(p => p.UserId == userId);
+            var provider = await _context.ProviderProfiles.FirstOrDefaultAsync(p =>
+                p.UserId == userId
+            );
 
             if (provider == null)
                 return NotFound(new { Message = "Perfil de proveedor no encontrado" });
 
-            var requests = await _context.Assistances
-                .Include(r => r.Client)
+            var requests = await _context
+                .Assistances.Include(r => r.Client)
                 .Include(r => r.Vehicle)
                 .Where(r => r.Status == AssistanceStatus.Pendiente && r.Provider == null)
                 .ToListAsync();
-            
+
             var result = requests
                 .Where(r =>
                     DistanceInKm(
@@ -234,17 +227,15 @@ namespace GruYaApi.Controllers
                         r.Origin.Longitude
                     ) <= rangekm
                 )
-                .Select(r => new NerbyAssistanceResponse
+                .Select(r => new NearbyAssistanceResponse
                 {
                     Id = r.Id,
                     ServiceType = r.ServiceType.ToString(),
                     IssueType = r.IssueType.ToString(),
                     ClientName = $"{r.Client.FirstName} {r.Client.LastName}",
                     Vehicle = $"{r.Vehicle.Brand} {r.Vehicle.Model}",
-                    OriginLatitude = r.Origin.Latitude,
-                    OriginLongitude = r.Origin.Longitude,
-                    DestinationLatitude = r.Destination.Latitude,
-                    DestinationLongitude = r.Destination.Longitude,
+                    Origin = r.Origin,
+                    Destination = r.Destination,
                     DistanceKm = Math.Round(
                         DistanceInKm(
                             provider.Location.Latitude,
@@ -253,7 +244,7 @@ namespace GruYaApi.Controllers
                             r.Origin.Longitude
                         ),
                         2
-                    )
+                    ),
                 })
                 .OrderBy(r => r.DistanceKm)
                 .ToList();
@@ -270,8 +261,7 @@ namespace GruYaApi.Controllers
         )
         {
             var providers = await _context
-                .ProviderProfiles
-                .Include(p => p.User)
+                .ProviderProfiles.Include(p => p.User)
                 .Where(p => p.IsAvailable)
                 .ToListAsync();
 
@@ -306,9 +296,7 @@ namespace GruYaApi.Controllers
             decimal rangeKm = 20
         )
         {
-            var services = await _context
-                .Assistances.Include(s => s.Client)
-                .ToListAsync();
+            var services = await _context.Assistances.Include(s => s.Client).ToListAsync();
 
             var result = services
                 .Where(s =>
@@ -327,11 +315,7 @@ namespace GruYaApi.Controllers
         }
 
         [HttpGet("{lat}/{lon}/{range}")]
-        public async Task<ActionResult> ListRanges(
-            decimal lat,
-            decimal lon,
-            decimal range
-        )
+        public async Task<ActionResult> ListRanges(decimal lat, decimal lon, decimal range)
         {
             var services = await _context.Assistances.ToListAsync();
             Console.WriteLine(services.Count);
