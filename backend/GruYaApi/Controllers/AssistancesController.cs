@@ -190,7 +190,8 @@ namespace GruYaApi.Controllers
                 Client = client,
                 Provider = provider,
                 Vehicle = vehicle,
-                Location = request.Location,
+                Origin = request.Origin,
+                Destination = request.Destination,
             };
 
             _context.Assistances.Add(assistance);
@@ -229,8 +230,8 @@ namespace GruYaApi.Controllers
                     DistanceInKm(
                         provider.Location.Latitude,
                         provider.Location.Longitude,
-                        r.Location.Latitude,
-                        r.Location.Longitude
+                        r.Origin.Latitude,
+                        r.Origin.Longitude
                     ) <= rangekm
                 )
                 .Select(r => new NerbyAssistanceResponse
@@ -240,14 +241,16 @@ namespace GruYaApi.Controllers
                     IssueType = r.IssueType.ToString(),
                     ClientName = $"{r.Client.FirstName} {r.Client.LastName}",
                     Vehicle = $"{r.Vehicle.Brand} {r.Vehicle.Model}",
-                    Latitude = r.Location.Latitude,
-                    Longitude = r.Location.Longitude,
+                    OriginLatitude = r.Origin.Latitude,
+                    OriginLongitude = r.Origin.Longitude,
+                    DestinationLatitude = r.Destination.Latitude,
+                    DestinationLongitude = r.Destination.Longitude,
                     DistanceKm = Math.Round(
                         DistanceInKm(
                             provider.Location.Latitude,
                             provider.Location.Longitude,
-                            r.Location.Latitude,
-                            r.Location.Longitude
+                            r.Origin.Latitude,
+                            r.Origin.Longitude
                         ),
                         2
                     )
@@ -309,15 +312,15 @@ namespace GruYaApi.Controllers
 
             var result = services
                 .Where(s =>
-                    DistanceInKm(latitude, longitude, s.Location.Latitude, s.Location.Longitude)
+                    DistanceInKm(latitude, longitude, s.Origin.Latitude, s.Origin.Longitude)
                     <= rangeKm
                 )
                 .Select(s => new
                 {
                     s.Id,
                     s.ServiceType,
-                    Latitude = s.Location.Latitude,
-                    Longitude = s.Location.Longitude,
+                    OriginLatitude = s.Origin.Latitude,
+                    OriginLongitude = s.Origin.Longitude,
                 });
 
             return Ok(result);
@@ -337,7 +340,7 @@ namespace GruYaApi.Controllers
             {
                 Console.WriteLine(item.Id);
                 Console.WriteLine(
-                    DistanceInKm(item.Location.Latitude, item.Location.Longitude, lat, lon)
+                    DistanceInKm(item.Origin.Latitude, item.Origin.Longitude, lat, lon)
                 );
             }
 

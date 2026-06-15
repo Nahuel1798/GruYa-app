@@ -13,7 +13,8 @@ namespace GruYaApi.DTOs.Responses
 
         public Vehicle? Vehicle { get; set; }
 
-        public Location Location { get; set; } = null!;
+        public Location Origin { get; set; } = null!;
+        public Location Destination { get; set; } = null!;
 
         public UserResponse Client { get; set; } = null!;
 

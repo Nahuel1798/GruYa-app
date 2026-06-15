@@ -8,8 +8,10 @@ namespace GruYaApi.DTOs.Response
         public string? IssueType { get; set; }
         public string ClientName { get; set; } = "";
         public string Vehicle { get; set; } = "";
-        public decimal Latitude { get; set; }
-        public decimal Longitude { get; set; }
+        public decimal OriginLatitude { get; set; }
+        public decimal OriginLongitude { get; set; }
+        public decimal DestinationLatitude { get; set; }
+        public decimal DestinationLongitude { get; set; }
         public decimal DistanceKm { get; set; }
     }
 }

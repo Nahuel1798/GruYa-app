@@ -14,7 +14,10 @@ namespace GruYaApi.DTOs.Requests
         public int VehicleId { get; set; }
 
         [Required]
-        public Location Location { get; set; } = null!;
+        public Location Origin { get; set; } = null!;
+
+        [Required]
+        public Location Destination { get; set; } = null!;
 
         public int? ProviderId { get; set; }
     }

@@ -12,7 +12,8 @@ namespace GruYaApi.Models
 
         public Vehicle? Vehicle { get; set; }
 
-        public Location Location { get; set; } = null!;
+        public Location Origin { get; set; } = null!;
+        public Location Destination { get; set; } = null!;
 
         public User Client { get; set; } = null!;
         public User? Provider { get; set; }
