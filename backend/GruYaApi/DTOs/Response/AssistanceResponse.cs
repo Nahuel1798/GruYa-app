@@ -11,7 +11,7 @@ namespace GruYaApi.DTOs.Responses
 
         public AssistanceStatus Status { get; set; }
 
-        public Vehicle? Vehicle { get; set; }
+        public VehicleResponse? Vehicle { get; set; }
 
         public Location Origin { get; set; } = null!;
         public Location Destination { get; set; } = null!;
