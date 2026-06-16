@@ -260,6 +260,7 @@ namespace GruYaApi.Controllers
             {
                 response.ProviderProfile = await _context
                     .ProviderProfiles
+                    .AsNoTracking()
                     .Where(pp => pp.UserId == assistance.Provider.Id)
                     .ProjectToType<ProviderProfileResponse>()
                     .FirstOrDefaultAsync();
