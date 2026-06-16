@@ -172,7 +172,7 @@ namespace GruYaApi.Controllers
             if (vehicle == null)
                 return NotFound(new { Message = "Vehículo no encontrado" });
 
-            User? provider = null;
+            int? providerProfileId = null;
 
             if (request.ProviderId.HasValue)
             {
@@ -191,7 +191,7 @@ namespace GruYaApi.Controllers
                     });
                 }
 
-                provider = providerProfile.User;
+                providerProfileId = providerProfile.Id;
             }
 
             // Calcular ruta
@@ -224,7 +224,7 @@ namespace GruYaApi.Controllers
                 Vehicle = vehicle,
                 Origin = request.Origin,
                 Destination = request.Destination,
-                RequestedProviderId = provider?.Id,
+                RequestedProviderProfileId = providerProfileId,
 
                 // Nuevos campos
                 DistanceKm = distanceKm,
@@ -238,7 +238,7 @@ namespace GruYaApi.Controllers
             return Ok(new
             {
                 AssistanceId = assistance.Id,
-                HasProvider = provider != null,
+                HasProvider = providerProfileId != null,
                 DistanceKm = assistance.DistanceKm,
                 EtaMinutes = assistance.EtaMinutes
             });
@@ -263,7 +263,7 @@ namespace GruYaApi.Controllers
                 .Include(r => r.Vehicle)
                 .Where(r => r.Status == AssistanceStatus.Pendiente
                     && r.Provider == null
-                    && r.RequestedProviderId == null)
+                    && r.RequestedProviderProfileId == null)
                 .ToListAsync();
 
             var result = requests

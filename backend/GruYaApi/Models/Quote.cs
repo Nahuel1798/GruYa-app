@@ -12,8 +12,8 @@ namespace GruYaApi.Models
         public Assistance Assistance { get; set; } = null!;
 
         [Required]
-        public int ProviderId { get; set; }
-        public User Provider { get; set; } = null!;
+        public int ProviderProfileId { get; set; }
+        public ProviderProfile ProviderProfile { get; set; } = null!;
 
         [Required]
         public decimal Price { get; set; }

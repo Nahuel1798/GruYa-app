@@ -30,10 +30,19 @@ namespace GruYaApi.Controllers
                 && DateTime.UtcNow - quote.CreatedAt > ExpirationWindow;
         }
 
+        private async Task<List<int>> GetProviderProfileIdsAsync(int userId)
+        {
+            return await _context.ProviderProfiles
+                .Where(p => p.UserId == userId)
+                .Select(p => p.Id)
+                .ToListAsync();
+        }
+
         private async Task<List<QuoteResponse>> MapToResponseAsync(IQueryable<Quote> query)
         {
             var quotes = await query
-                .Include(q => q.Provider)
+                .Include(q => q.ProviderProfile)
+                    .ThenInclude(pp => pp.User)
                 .Include(q => q.Assistance)
                     .ThenInclude(a => a.Client)
                 .Include(q => q.Assistance)
@@ -48,7 +57,7 @@ namespace GruYaApi.Controllers
                 Status = IsExpired(q) ? QuoteStatus.Expirada : q.Status,
                 CreatedAt = q.CreatedAt,
                 UpdatedAt = q.UpdatedAt,
-                ProviderName = $"{q.Provider.FirstName} {q.Provider.LastName}",
+                ProviderName = $"{q.ProviderProfile.User.FirstName} {q.ProviderProfile.User.LastName}",
                 Assistance = q.Assistance.Adapt<AssistanceResponse>(),
             }).ToList();
         }
@@ -59,8 +68,8 @@ namespace GruYaApi.Controllers
         {
             var userId = (int)HttpContext.Items["idUsuario"]!;
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-            if (user == null || user.Role != Role.Provider)
+            var profileIds = await GetProviderProfileIdsAsync(userId);
+            if (profileIds.Count == 0)
                 return Forbid();
 
             if (request.Price <= 0)
@@ -74,20 +83,23 @@ namespace GruYaApi.Controllers
                 return BadRequest(new { Message = "La solicitud no está abierta para cotizaciones" });
 
             // Check directed request — only the targeted provider may quote
-            if (assistance.RequestedProviderId.HasValue && assistance.RequestedProviderId.Value != userId)
+            if (assistance.RequestedProviderProfileId.HasValue
+                && !profileIds.Contains(assistance.RequestedProviderProfileId.Value))
                 return Forbid();
+
+            var providerProfileId = profileIds.First();
 
             // Check duplicate active quote
             var hasActiveQuote = await _context.Quotes.AnyAsync(q =>
                 q.AssistanceId == request.AssistanceId
-                && q.ProviderId == userId
+                && q.ProviderProfileId == providerProfileId
                 && q.Status == QuoteStatus.Pendiente);
 
             if (hasActiveQuote)
                 return Conflict(new { Message = "Ya tienes una cotización pendiente para esta solicitud" });
 
             var quote = request.Adapt<Quote>();
-            quote.ProviderId = userId;
+            quote.ProviderProfileId = providerProfileId;
             quote.Status = QuoteStatus.Pendiente;
             quote.CreatedAt = DateTime.UtcNow;
             quote.UpdatedAt = DateTime.UtcNow;
@@ -106,8 +118,9 @@ namespace GruYaApi.Controllers
         public async Task<IActionResult> GetMyQuotes([FromQuery] QuoteStatus? status)
         {
             var userId = (int)HttpContext.Items["idUsuario"]!;
+            var profileIds = await GetProviderProfileIdsAsync(userId);
 
-            var query = _context.Quotes.Where(q => q.ProviderId == userId);
+            var query = _context.Quotes.Where(q => profileIds.Contains(q.ProviderProfileId));
 
             if (status.HasValue)
                 query = query.Where(q => q.Status == status.Value);
@@ -146,20 +159,20 @@ namespace GruYaApi.Controllers
         public async Task<IActionResult> GetRequestsForMe()
         {
             var userId = (int)HttpContext.Items["idUsuario"]!;
+            var profileIds = await GetProviderProfileIdsAsync(userId);
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-            if (user == null || user.Role != Role.Provider)
+            if (profileIds.Count == 0)
                 return Forbid();
 
-            // Open assistances where caller has no pending quote
+            // Open assistances where caller has no pending quote from any of their profiles
             var openAssistances = await _context.Assistances
                 .Include(a => a.Client)
                 .Include(a => a.Vehicle)
                 .Where(a => a.Status == AssistanceStatus.Pendiente
-                    && a.RequestedProviderId == null
+                    && a.RequestedProviderProfileId == null
                     && !_context.Quotes.Any(q =>
                         q.AssistanceId == a.Id
-                        && q.ProviderId == userId
+                        && profileIds.Contains(q.ProviderProfileId)
                         && q.Status == QuoteStatus.Pendiente))
                 .ToListAsync();
 
@@ -168,7 +181,8 @@ namespace GruYaApi.Controllers
                 .Include(a => a.Client)
                 .Include(a => a.Vehicle)
                 .Where(a => a.Status == AssistanceStatus.Pendiente
-                    && a.RequestedProviderId == userId)
+                    && a.RequestedProviderProfileId != null
+                    && profileIds.Contains(a.RequestedProviderProfileId.Value))
                 .ToListAsync();
 
             var result = openAssistances
@@ -217,7 +231,8 @@ namespace GruYaApi.Controllers
             var quote = await _context.Quotes
                 .Include(q => q.Assistance)
                     .ThenInclude(a => a.Client)
-                .Include(q => q.Provider)
+                .Include(q => q.ProviderProfile)
+                    .ThenInclude(pp => pp.User)
                 .FirstOrDefaultAsync(q => q.Id == quoteId);
 
             if (quote == null)
@@ -228,7 +243,8 @@ namespace GruYaApi.Controllers
                 return Forbid();
 
             // Provider cannot accept own quote
-            if (quote.ProviderId == userId)
+            var profileIds = await GetProviderProfileIdsAsync(userId);
+            if (profileIds.Contains(quote.ProviderProfileId))
                 return Forbid();
 
             // Lazy expiration check — expire and persist if needed
@@ -246,7 +262,7 @@ namespace GruYaApi.Controllers
             // Transactional accept
             quote.Status = QuoteStatus.Aceptada;
             quote.UpdatedAt = DateTime.UtcNow;
-            quote.Assistance.Provider = quote.Provider;
+            quote.Assistance.Provider = quote.ProviderProfile.User;
             quote.Assistance.Status = AssistanceStatus.EnProceso;
 
             // Auto-reject other pending quotes for the same assistance
@@ -317,14 +333,15 @@ namespace GruYaApi.Controllers
             var userId = (int)HttpContext.Items["idUsuario"]!;
 
             var quote = await _context.Quotes
-                .Include(q => q.Provider)
+                .Include(q => q.ProviderProfile)
                 .FirstOrDefaultAsync(q => q.Id == quoteId);
 
             if (quote == null)
                 return NotFound(new { Message = "Cotización no encontrada" });
 
-            // Caller must be the quote creator
-            if (quote.ProviderId != userId)
+            // Caller must be the quote creator (any of their profiles)
+            var profileIds = await GetProviderProfileIdsAsync(userId);
+            if (!profileIds.Contains(quote.ProviderProfileId))
                 return Forbid();
 
             // Lazy expiration check

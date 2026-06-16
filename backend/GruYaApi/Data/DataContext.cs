@@ -36,17 +36,17 @@ namespace GruYaApi.Data
                     .HasForeignKey(q => q.AssistanceId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasOne(q => q.Provider)
+                entity.HasOne(q => q.ProviderProfile)
                     .WithMany()
-                    .HasForeignKey(q => q.ProviderId)
+                    .HasForeignKey(q => q.ProviderProfileId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<Assistance>(entity =>
             {
-                entity.HasOne(a => a.RequestedProvider)
+                entity.HasOne(a => a.RequestedProviderProfile)
                     .WithMany()
-                    .HasForeignKey(a => a.RequestedProviderId)
+                    .HasForeignKey(a => a.RequestedProviderProfileId)
                     .OnDelete(DeleteBehavior.SetNull);
             });
         }

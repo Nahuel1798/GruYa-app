@@ -18,8 +18,8 @@ namespace GruYaApi.Models
         public User Client { get; set; } = null!;
         public User? Provider { get; set; }
 
-        public int? RequestedProviderId { get; set; }
-        public User? RequestedProvider { get; set; }
+        public int? RequestedProviderProfileId { get; set; }
+        public ProviderProfile? RequestedProviderProfile { get; set; }
 
         public double? DistanceKm { get; set; }
         public double? EtaMinutes { get; set; }
