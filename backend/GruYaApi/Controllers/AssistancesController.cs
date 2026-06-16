@@ -197,6 +197,7 @@ namespace GruYaApi.Controllers
             // Calcular ruta
             double? distanceKm = null;
             double? etaMinutes = null;
+            string? routeGeometry = null;
 
             try
             {
@@ -209,6 +210,7 @@ namespace GruYaApi.Controllers
 
                 distanceKm = route.DistanceKm;
                 etaMinutes = route.EtaMinutes;
+                routeGeometry = route.GeometryJson;
             }
             catch (Exception ex)
             {
@@ -228,7 +230,8 @@ namespace GruYaApi.Controllers
 
                 // Nuevos campos
                 DistanceKm = distanceKm,
-                EtaMinutes = etaMinutes
+                EtaMinutes = etaMinutes,
+                RouteGeometry = routeGeometry
             };
 
             _context.Assistances.Add(assistance);
@@ -240,7 +243,8 @@ namespace GruYaApi.Controllers
                 AssistanceId = assistance.Id,
                 HasProvider = providerProfileId != null,
                 DistanceKm = assistance.DistanceKm,
-                EtaMinutes = assistance.EtaMinutes
+                EtaMinutes = assistance.EtaMinutes,
+                RouteGeometry = assistance.RouteGeometry
             });
         }
 
