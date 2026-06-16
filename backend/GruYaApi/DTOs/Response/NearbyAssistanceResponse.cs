@@ -12,5 +12,6 @@ namespace GruYaApi.DTOs.Response
         public Location Origin { get; set; } = null!;
         public Location Destination { get; set; } = null!;
         public decimal DistanceKm { get; set; }
+        public bool IsDirected { get; set; }
     }
 }

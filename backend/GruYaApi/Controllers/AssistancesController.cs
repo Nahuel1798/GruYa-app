@@ -246,6 +246,7 @@ namespace GruYaApi.Controllers
 
         // GET: api/assistances/assistance-nearby
         // Obtiene solicitudes de auxilio (Assistance) cercanas a un proveedor, ordenadas por distancia
+        // Devuelve tanto solicitudes abiertas como las dirigidas al proveedor autenticado
         [HttpGet("assistance-nearby")]
         public async Task<IActionResult> NearbyAssistance(decimal rangekm = 20)
         {
@@ -258,23 +259,44 @@ namespace GruYaApi.Controllers
             if (provider == null)
                 return NotFound(new { Message = "Perfil de proveedor no encontrado" });
 
-            var requests = await _context
-                .Assistances.Include(r => r.Client)
+            var profileIds = await _context.ProviderProfiles
+                .Where(p => p.UserId == userId)
+                .Select(p => p.Id)
+                .ToListAsync();
+
+            // Abiertas — sin proveedor asignado, sin quote pendiente del caller
+            var openRequests = await _context
+                .Assistances
+                .Include(r => r.Client)
                 .Include(r => r.Vehicle)
                 .Where(r => r.Status == AssistanceStatus.Pendiente
                     && r.Provider == null
-                    && r.RequestedProviderProfileId == null)
+                    && r.RequestedProviderProfileId == null
+                    && !_context.Quotes.Any(q =>
+                        q.AssistanceId == r.Id
+                        && profileIds.Contains(q.ProviderProfileId)
+                        && q.Status == QuoteStatus.Pendiente))
                 .ToListAsync();
 
-            var result = requests
-                .Where(r =>
-                    DistanceInKm(
-                        provider.Location.Latitude,
-                        provider.Location.Longitude,
-                        r.Origin.Latitude,
-                        r.Origin.Longitude
-                    ) <= rangekm
-                )
+            // Dirigidas — apuntan a algún profile del caller
+            var directedRequests = await _context
+                .Assistances
+                .Include(r => r.Client)
+                .Include(r => r.Vehicle)
+                .Where(r => r.Status == AssistanceStatus.Pendiente
+                    && r.Provider == null
+                    && r.RequestedProviderProfileId != null
+                    && profileIds.Contains(r.RequestedProviderProfileId.Value))
+                .ToListAsync();
+
+            var providerLat = provider.Location.Latitude;
+            var providerLon = provider.Location.Longitude;
+
+            static decimal Haversine(decimal lat1, decimal lon1, decimal lat2, decimal lon2)
+                => DistanceInKm(lat1, lon1, lat2, lon2);
+
+            var openResult = openRequests
+                .Where(r => Haversine(providerLat, providerLon, r.Origin.Latitude, r.Origin.Longitude) <= rangekm)
                 .Select(r => new NearbyAssistanceResponse
                 {
                     Id = r.Id,
@@ -284,16 +306,27 @@ namespace GruYaApi.Controllers
                     Vehicle = $"{r.Vehicle.Brand} {r.Vehicle.Model}",
                     Origin = r.Origin,
                     Destination = r.Destination,
-                    DistanceKm = Math.Round(
-                        DistanceInKm(
-                            provider.Location.Latitude,
-                            provider.Location.Longitude,
-                            r.Origin.Latitude,
-                            r.Origin.Longitude
-                        ),
-                        2
-                    ),
-                })
+                    DistanceKm = Math.Round(Haversine(providerLat, providerLon, r.Origin.Latitude, r.Origin.Longitude), 2),
+                    IsDirected = false,
+                });
+
+            var directedResult = directedRequests
+                .Where(r => Haversine(providerLat, providerLon, r.Origin.Latitude, r.Origin.Longitude) <= rangekm)
+                .Select(r => new NearbyAssistanceResponse
+                {
+                    Id = r.Id,
+                    ServiceType = r.ServiceType.ToString(),
+                    IssueType = r.IssueType.ToString(),
+                    ClientName = $"{r.Client.FirstName} {r.Client.LastName}",
+                    Vehicle = $"{r.Vehicle.Brand} {r.Vehicle.Model}",
+                    Origin = r.Origin,
+                    Destination = r.Destination,
+                    DistanceKm = Math.Round(Haversine(providerLat, providerLon, r.Origin.Latitude, r.Origin.Longitude), 2),
+                    IsDirected = true,
+                });
+
+            var result = openResult
+                .Concat(directedResult)
                 .OrderBy(r => r.DistanceKm)
                 .ToList();
 
