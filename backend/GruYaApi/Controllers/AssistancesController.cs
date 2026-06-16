@@ -160,14 +160,14 @@ namespace GruYaApi.Controllers
         {
             var idUsuario = (int)HttpContext.Items["idUsuario"]!;
 
-            var client = await _context.Users
-                .FirstOrDefaultAsync(u => u.Id == idUsuario);
+            var client = await _context.Users.FirstOrDefaultAsync(u => u.Id == idUsuario);
 
             if (client == null)
                 return NotFound(new { Message = "Cliente no encontrado" });
 
-            var vehicle = await _context.Vehicles
-                .FirstOrDefaultAsync(v => v.Id == request.VehicleId);
+            var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v =>
+                v.Id == request.VehicleId
+            );
 
             if (vehicle == null)
                 return NotFound(new { Message = "Vehículo no encontrado" });
@@ -177,18 +177,12 @@ namespace GruYaApi.Controllers
             if (request.ProviderId.HasValue)
             {
                 var providerProfile = await _context
-                    .ProviderProfiles
-                    .Include(p => p.User)
-                    .FirstOrDefaultAsync(p =>
-                        p.Id == request.ProviderId.Value &&
-                        p.IsAvailable);
+                    .ProviderProfiles.Include(p => p.User)
+                    .FirstOrDefaultAsync(p => p.Id == request.ProviderId.Value && p.IsAvailable);
 
                 if (providerProfile == null)
                 {
-                    return Conflict(new
-                    {
-                        Message = "El prestador solicitado no está disponible"
-                    });
+                    return Conflict(new { Message = "El prestador solicitado no está disponible" });
                 }
 
                 providerProfileId = providerProfile.Id;
@@ -231,55 +225,43 @@ namespace GruYaApi.Controllers
                 // Nuevos campos
                 DistanceKm = distanceKm,
                 EtaMinutes = etaMinutes,
-                RouteGeometry = routeGeometry
+                RouteGeometry = routeGeometry,
             };
 
             _context.Assistances.Add(assistance);
 
             await _context.SaveChangesAsync();
 
-            return Ok(new CreateAssistanceResponse
-            {
-                AssistanceId = assistance.Id,
-                HasProvider = providerProfileId != null,
-                DistanceKm = assistance.DistanceKm,
-                EtaMinutes = assistance.EtaMinutes,
-            });
+            return Ok(
+                new CreateAssistanceResponse
+                {
+                    AssistanceId = assistance.Id,
+                    HasProvider = providerProfileId != null,
+                    DistanceKm = assistance.DistanceKm,
+                    EtaMinutes = assistance.EtaMinutes,
+                }
+            );
         }
-
 
         // GET: api/assistances/{id}
         // Obtiene los detalles de una solicitud de auxilio
         [HttpGet("{id}")]
         public async Task<IActionResult> GetAssistance(int id)
         {
-            var assistance = await _context
-                .Assistances
-                .Include(a => a.Origin)
+            var response = await _context
+                .Assistances.Include(a => a.Origin)
                 .Include(a => a.Destination)
+                .Include(a => a.Client)
+                .Include(a => a.Provider)
+                .Include(a => a.Vehicle)
+                .AsNoTracking()
+                .ProjectToType<AssistanceResponse>()
                 .FirstOrDefaultAsync(a => a.Id == id);
 
-            if (assistance == null)
+            if (response == null)
             {
-                return NotFound(new
-                {
-                    Message = "Asistencia no encontrada"
-                });
+                return NotFound(new { Message = "Asistencia no encontrada" });
             }
-
-            var response = new AssistanceResponse
-            {
-                Id = assistance.Id,
-                ServiceType = assistance.ServiceType,
-                Status = assistance.Status,
-
-                Origin = assistance.Origin,
-                Destination = assistance.Destination,
-
-                DistanceKm = assistance.DistanceKm,
-                EtaMinutes = assistance.EtaMinutes,
-                RouteGeometry = assistance.RouteGeometry
-            };
 
             return Ok(response);
         }
@@ -299,44 +281,50 @@ namespace GruYaApi.Controllers
             if (provider == null)
                 return NotFound(new { Message = "Perfil de proveedor no encontrado" });
 
-            var profileIds = await _context.ProviderProfiles
-                .Where(p => p.UserId == userId)
+            var profileIds = await _context
+                .ProviderProfiles.Where(p => p.UserId == userId)
                 .Select(p => p.Id)
                 .ToListAsync();
 
             // Abiertas — sin proveedor asignado, sin quote pendiente del caller
             var openRequests = await _context
-                .Assistances
-                .Include(r => r.Client)
+                .Assistances.Include(r => r.Client)
                 .Include(r => r.Vehicle)
-                .Where(r => r.Status == AssistanceStatus.Pendiente
+                .Where(r =>
+                    r.Status == AssistanceStatus.Pendiente
                     && r.Provider == null
                     && r.RequestedProviderProfileId == null
                     && !_context.Quotes.Any(q =>
                         q.AssistanceId == r.Id
                         && profileIds.Contains(q.ProviderProfileId)
-                        && q.Status == QuoteStatus.Pendiente))
+                        && q.Status == QuoteStatus.Pendiente
+                    )
+                )
                 .ToListAsync();
 
             // Dirigidas — apuntan a algún profile del caller
             var directedRequests = await _context
-                .Assistances
-                .Include(r => r.Client)
+                .Assistances.Include(r => r.Client)
                 .Include(r => r.Vehicle)
-                .Where(r => r.Status == AssistanceStatus.Pendiente
+                .Where(r =>
+                    r.Status == AssistanceStatus.Pendiente
                     && r.Provider == null
                     && r.RequestedProviderProfileId != null
-                    && profileIds.Contains(r.RequestedProviderProfileId.Value))
+                    && profileIds.Contains(r.RequestedProviderProfileId.Value)
+                )
                 .ToListAsync();
 
             var providerLat = provider.Location.Latitude;
             var providerLon = provider.Location.Longitude;
 
-            static decimal Haversine(decimal lat1, decimal lon1, decimal lat2, decimal lon2)
-                => DistanceInKm(lat1, lon1, lat2, lon2);
+            static decimal Haversine(decimal lat1, decimal lon1, decimal lat2, decimal lon2) =>
+                DistanceInKm(lat1, lon1, lat2, lon2);
 
             var openResult = openRequests
-                .Where(r => Haversine(providerLat, providerLon, r.Origin.Latitude, r.Origin.Longitude) <= rangekm)
+                .Where(r =>
+                    Haversine(providerLat, providerLon, r.Origin.Latitude, r.Origin.Longitude)
+                    <= rangekm
+                )
                 .Select(r => new NearbyAssistanceResponse
                 {
                     Id = r.Id,
@@ -346,12 +334,18 @@ namespace GruYaApi.Controllers
                     Vehicle = $"{r.Vehicle.Brand} {r.Vehicle.Model}",
                     Origin = r.Origin,
                     Destination = r.Destination,
-                    DistanceKm = Math.Round(Haversine(providerLat, providerLon, r.Origin.Latitude, r.Origin.Longitude), 2),
+                    DistanceKm = Math.Round(
+                        Haversine(providerLat, providerLon, r.Origin.Latitude, r.Origin.Longitude),
+                        2
+                    ),
                     IsDirected = false,
                 });
 
             var directedResult = directedRequests
-                .Where(r => Haversine(providerLat, providerLon, r.Origin.Latitude, r.Origin.Longitude) <= rangekm)
+                .Where(r =>
+                    Haversine(providerLat, providerLon, r.Origin.Latitude, r.Origin.Longitude)
+                    <= rangekm
+                )
                 .Select(r => new NearbyAssistanceResponse
                 {
                     Id = r.Id,
@@ -361,14 +355,14 @@ namespace GruYaApi.Controllers
                     Vehicle = $"{r.Vehicle.Brand} {r.Vehicle.Model}",
                     Origin = r.Origin,
                     Destination = r.Destination,
-                    DistanceKm = Math.Round(Haversine(providerLat, providerLon, r.Origin.Latitude, r.Origin.Longitude), 2),
+                    DistanceKm = Math.Round(
+                        Haversine(providerLat, providerLon, r.Origin.Latitude, r.Origin.Longitude),
+                        2
+                    ),
                     IsDirected = true,
                 });
 
-            var result = openResult
-                .Concat(directedResult)
-                .OrderBy(r => r.DistanceKm)
-                .ToList();
+            var result = openResult.Concat(directedResult).OrderBy(r => r.DistanceKm).ToList();
 
             return Ok(result);
         }
