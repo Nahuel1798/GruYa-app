@@ -235,7 +235,7 @@ namespace GruYaApi.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(new
+            return Ok(new CreateAssistanceResponse
             {
                 AssistanceId = assistance.Id,
                 HasProvider = providerProfileId != null,
