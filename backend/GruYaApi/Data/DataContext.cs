@@ -13,6 +13,7 @@ namespace GruYaApi.Data
         public DbSet<Assistance> Assistances { get; set; }
         public DbSet<ProviderProfile> ProviderProfiles { get; set; }
         public DbSet<Vehicle> Vehicles { get; set; }
+        public DbSet<Quote> Quotes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -26,6 +27,27 @@ namespace GruYaApi.Data
                     .WithMany()
                     .HasForeignKey(v => v.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<Quote>(entity =>
+            {
+                entity.HasOne(q => q.Assistance)
+                    .WithMany()
+                    .HasForeignKey(q => q.AssistanceId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(q => q.Provider)
+                    .WithMany()
+                    .HasForeignKey(q => q.ProviderId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<Assistance>(entity =>
+            {
+                entity.HasOne(a => a.RequestedProvider)
+                    .WithMany()
+                    .HasForeignKey(a => a.RequestedProviderId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
         }
     }

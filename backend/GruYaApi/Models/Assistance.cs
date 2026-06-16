@@ -17,5 +17,8 @@ namespace GruYaApi.Models
 
         public User Client { get; set; } = null!;
         public User? Provider { get; set; }
+
+        public int? RequestedProviderId { get; set; }
+        public User? RequestedProvider { get; set; }
     }
 }

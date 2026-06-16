@@ -148,8 +148,8 @@ namespace GruYaApi.Controllers
         */
 
         // POST: api/assistances/request
-        // Crea una solicitud de auxilio. Si se especifica un providerId, asigna ese proveedor.
-        // Si no, la solicitud queda sin asignar para que los proveedores cercanos puedan aceptarla.
+        // Crea una solicitud de auxilio. Si se especifica un providerId, se dirige a ese proveedor.
+        // Si no, la solicitud queda abierta para que cualquier proveedor pueda cotizar.
         [HttpPost("request")]
         public async Task<IActionResult> RequestAssistance(
             [FromBody] CreateAssistanceRequest request
@@ -186,10 +186,10 @@ namespace GruYaApi.Controllers
                 IssueType = request.IssueType,
                 Status = AssistanceStatus.Pendiente,
                 Client = client,
-                Provider = provider,
                 Vehicle = vehicle,
                 Origin = request.Origin,
                 Destination = request.Destination,
+                RequestedProviderId = provider?.Id,
             };
 
             _context.Assistances.Add(assistance);
@@ -215,7 +215,9 @@ namespace GruYaApi.Controllers
             var requests = await _context
                 .Assistances.Include(r => r.Client)
                 .Include(r => r.Vehicle)
-                .Where(r => r.Status == AssistanceStatus.Pendiente && r.Provider == null)
+                .Where(r => r.Status == AssistanceStatus.Pendiente
+                    && r.Provider == null
+                    && r.RequestedProviderId == null)
                 .ToListAsync();
 
             var result = requests
