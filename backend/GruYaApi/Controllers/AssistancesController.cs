@@ -1,6 +1,5 @@
 using GruYaApi.Data;
 using GruYaApi.DTOs.Requests;
-using GruYaApi.DTOs.Response;
 using GruYaApi.DTOs.Responses;
 using GruYaApi.Filters;
 using GruYaApi.Models;
@@ -232,15 +231,8 @@ namespace GruYaApi.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(
-                new CreateAssistanceResponse
-                {
-                    AssistanceId = assistance.Id,
-                    HasProvider = providerProfileId != null,
-                    DistanceKm = assistance.DistanceKm,
-                    EtaMinutes = assistance.EtaMinutes,
-                }
-            );
+            var response = assistance.Adapt<AssistanceResponse>();
+            return Ok(response);
         }
 
         // GET: api/assistances/{id}
@@ -248,19 +240,29 @@ namespace GruYaApi.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetAssistance(int id)
         {
-            var response = await _context
+            var assistance = await _context
                 .Assistances.Include(a => a.Origin)
                 .Include(a => a.Destination)
                 .Include(a => a.Client)
                 .Include(a => a.Provider)
                 .Include(a => a.Vehicle)
                 .AsNoTracking()
-                .ProjectToType<AssistanceResponse>()
                 .FirstOrDefaultAsync(a => a.Id == id);
 
-            if (response == null)
+            if (assistance == null)
             {
                 return NotFound(new { Message = "Asistencia no encontrada" });
+            }
+
+            var response = assistance.Adapt<AssistanceResponse>();
+
+            if (assistance.Provider != null)
+            {
+                response.ProviderProfile = await _context
+                    .ProviderProfiles
+                    .Where(pp => pp.UserId == assistance.Provider.Id)
+                    .ProjectToType<ProviderProfileResponse>()
+                    .FirstOrDefaultAsync();
             }
 
             return Ok(response);

@@ -8,6 +8,7 @@ namespace GruYaApi.DTOs.Responses
         public int Id { get; set; }
 
         public ServiceType ServiceType { get; set; }
+        public IssueType IssueType { get; set; }
 
         public AssistanceStatus Status { get; set; }
 
@@ -18,7 +19,7 @@ namespace GruYaApi.DTOs.Responses
 
         public UserResponse Client { get; set; } = null!;
 
-        public UserResponse? Provider { get; set; }
+        public ProviderProfileResponse? ProviderProfile { get; set; }
 
         public double? DistanceKm { get; set; }
         public double? EtaMinutes { get; set; }
