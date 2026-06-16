@@ -247,6 +247,43 @@ namespace GruYaApi.Controllers
             });
         }
 
+
+        // GET: api/assistances/{id}
+        // Obtiene los detalles de una solicitud de auxilio
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetAssistance(int id)
+        {
+            var assistance = await _context
+                .Assistances
+                .Include(a => a.Origin)
+                .Include(a => a.Destination)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (assistance == null)
+            {
+                return NotFound(new
+                {
+                    Message = "Asistencia no encontrada"
+                });
+            }
+
+            var response = new AssistanceResponse
+            {
+                Id = assistance.Id,
+                ServiceType = assistance.ServiceType,
+                Status = assistance.Status,
+
+                Origin = assistance.Origin,
+                Destination = assistance.Destination,
+
+                DistanceKm = assistance.DistanceKm,
+                EtaMinutes = assistance.EtaMinutes,
+                RouteGeometry = assistance.RouteGeometry
+            };
+
+            return Ok(response);
+        }
+
         // GET: api/assistances/assistance-nearby
         // Obtiene solicitudes de auxilio (Assistance) cercanas a un proveedor, ordenadas por distancia
         // Devuelve tanto solicitudes abiertas como las dirigidas al proveedor autenticado
