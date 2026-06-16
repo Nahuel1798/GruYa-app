@@ -19,5 +19,9 @@ namespace GruYaApi.DTOs.Responses
         public UserResponse Client { get; set; } = null!;
 
         public UserResponse? Provider { get; set; }
+
+        public double? DistanceKm { get; set; }
+        public double? EtaMinutes { get; set; }
+        public string? RouteGeometry { get; set; }
     }
 }

@@ -20,5 +20,9 @@ namespace GruYaApi.Models
 
         public int? RequestedProviderId { get; set; }
         public User? RequestedProvider { get; set; }
+
+        public double? DistanceKm { get; set; }
+        public double? EtaMinutes { get; set; }
+        public string? RouteGeometry { get; set; }
     }
 }

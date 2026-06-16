@@ -4,6 +4,7 @@ using GruYaApi.DTOs.Response;
 using GruYaApi.DTOs.Responses;
 using GruYaApi.Filters;
 using GruYaApi.Models;
+using GruYaApi.Services;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,10 +19,12 @@ namespace GruYaApi.Controllers
     public class AssistancesController : ControllerBase
     {
         private readonly DataContext _context;
+        private readonly OsrmService _osrmService;
 
-        public AssistancesController(DataContext context)
+        public AssistancesController(DataContext context, OsrmService osrmService)
         {
             _context = context;
+            _osrmService = osrmService;
         }
 
         // Función para calcular la distancia entre dos puntos geográficos utilizando la fórmula de Haversine
@@ -156,13 +159,16 @@ namespace GruYaApi.Controllers
         )
         {
             var idUsuario = (int)HttpContext.Items["idUsuario"]!;
-            var client = await _context.Users.FirstOrDefaultAsync(u => u.Id == idUsuario);
+
+            var client = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == idUsuario);
+
             if (client == null)
                 return NotFound(new { Message = "Cliente no encontrado" });
 
-            var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v =>
-                v.Id == request.VehicleId
-            );
+            var vehicle = await _context.Vehicles
+                .FirstOrDefaultAsync(v => v.Id == request.VehicleId);
+
             if (vehicle == null)
                 return NotFound(new { Message = "Vehículo no encontrado" });
 
@@ -171,13 +177,42 @@ namespace GruYaApi.Controllers
             if (request.ProviderId.HasValue)
             {
                 var providerProfile = await _context
-                    .ProviderProfiles.Include(p => p.User)
-                    .FirstOrDefaultAsync(p => p.Id == request.ProviderId.Value && p.IsAvailable);
+                    .ProviderProfiles
+                    .Include(p => p.User)
+                    .FirstOrDefaultAsync(p =>
+                        p.Id == request.ProviderId.Value &&
+                        p.IsAvailable);
 
                 if (providerProfile == null)
-                    return Conflict(new { Message = "El prestador solicitado no está disponible" });
+                {
+                    return Conflict(new
+                    {
+                        Message = "El prestador solicitado no está disponible"
+                    });
+                }
 
                 provider = providerProfile.User;
+            }
+
+            // Calcular ruta
+            double? distanceKm = null;
+            double? etaMinutes = null;
+
+            try
+            {
+                var route = await _osrmService.GetRouteInfoAsync(
+                    request.Origin.Latitude,
+                    request.Origin.Longitude,
+                    request.Destination.Latitude,
+                    request.Destination.Longitude
+                );
+
+                distanceKm = route.DistanceKm;
+                etaMinutes = route.EtaMinutes;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error calculando ruta: {ex.Message}");
             }
 
             var assistance = new Assistance
@@ -190,12 +225,23 @@ namespace GruYaApi.Controllers
                 Origin = request.Origin,
                 Destination = request.Destination,
                 RequestedProviderId = provider?.Id,
+
+                // Nuevos campos
+                DistanceKm = distanceKm,
+                EtaMinutes = etaMinutes
             };
 
             _context.Assistances.Add(assistance);
+
             await _context.SaveChangesAsync();
 
-            return Ok(new { AssistanceId = assistance.Id, HasProvider = provider != null });
+            return Ok(new
+            {
+                AssistanceId = assistance.Id,
+                HasProvider = provider != null,
+                DistanceKm = assistance.DistanceKm,
+                EtaMinutes = assistance.EtaMinutes
+            });
         }
 
         // GET: api/assistances/assistance-nearby
