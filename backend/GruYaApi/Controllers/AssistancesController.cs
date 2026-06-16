@@ -244,7 +244,6 @@ namespace GruYaApi.Controllers
                 HasProvider = providerProfileId != null,
                 DistanceKm = assistance.DistanceKm,
                 EtaMinutes = assistance.EtaMinutes,
-                RouteGeometry = assistance.RouteGeometry
             });
         }
 

@@ -6,5 +6,4 @@ public class CreateAssistanceResponse
     public bool HasProvider { get; set; }
     public double? DistanceKm { get; set; }
     public double? EtaMinutes { get; set; }
-    public string? RouteGeometry { get; set; }
 }
