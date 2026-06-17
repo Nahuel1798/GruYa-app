@@ -269,6 +269,51 @@ namespace GruYaApi.Controllers
             return Ok(response);
         }
 
+        // GET: api/assistances/my
+        // Devuelve todas las solicitudes de auxilio del usuario autenticado
+        // Opcional: ?status=Pendiente para filtrar por estado
+        [HttpGet("my")]
+        public async Task<IActionResult> GetMyAssistances(AssistanceStatus? status = null)
+        {
+            var idUsuario = (int)HttpContext.Items["idUsuario"]!;
+
+            var query = _context
+                .Assistances.Include(a => a.Origin)
+                .Include(a => a.Destination)
+                .Include(a => a.Vehicle)
+                .Include(a => a.Provider)
+                .Where(a => a.Client.Id == idUsuario)
+                .AsNoTracking();
+
+            if (status.HasValue)
+            {
+                query = query.Where(a => a.Status == status.Value);
+            }
+
+            var assistances = await query
+                .OrderByDescending(a => a.Id)
+                .ToListAsync();
+
+            var response = assistances.Select(a =>
+            {
+                var dto = a.Adapt<AssistanceResponse>();
+
+                if (a.Provider != null)
+                {
+                    dto.ProviderProfile = _context
+                        .ProviderProfiles
+                        .AsNoTracking()
+                        .Where(pp => pp.UserId == a.Provider.Id)
+                        .ProjectToType<ProviderProfileResponse>()
+                        .FirstOrDefault();
+                }
+
+                return dto;
+            });
+
+            return Ok(response);
+        }
+
         // GET: api/assistances/assistance-nearby
         // Obtiene solicitudes de auxilio (Assistance) cercanas a un proveedor, ordenadas por distancia
         // Devuelve tanto solicitudes abiertas como las dirigidas al proveedor autenticado
