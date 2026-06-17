@@ -57,98 +57,6 @@ namespace GruYaApi.Controllers
             return degrees * (decimal)Math.PI / 180m;
         }
 
-        /*
-
-        // POST: api/services/request
-        // Crea una nueva solicitud de servicio, asignando automáticamente el proveedor más cercano disponible según la ubicación del cliente y el vehículo, y calculando la distancia y el tiempo estimado de llegada
-        [HttpPost("request_old")]
-        public async Task<IActionResult> RequestService(
-            [FromBody] CreateServiceRequestRequest request
-        )
-        {
-            var idUsuario = (int)HttpContext.Items["idUsuario"]!;
-            var client = await _context.Users.FirstOrDefaultAsync(u => u.Id == idUsuario);
-
-            if (client == null)
-                return NotFound(new { Message = "Cliente no encontrado" });
-
-            var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v =>
-                v.Id == request.VehicleId
-            );
-
-            if (vehicle == null)
-                return NotFound(new { Message = "Vehículo no encontrado" });
-
-            var providers = await _context
-                .ProviderProfiles.Include(p => p.User)
-                .Where(p => p.IsAvailable)
-                .ToListAsync();
-
-            if (!providers.Any())
-                return BadRequest(new { Message = "No hay proveedores disponibles" });
-
-            ProviderProfile? bestProvider = null;
-            double bestDistance = double.MaxValue;
-            double bestEta = double.MaxValue;
-
-            foreach (var provider in providers)
-            {
-                try
-                {
-                    var route = await _osrmService.GetRouteInfoAsync(
-                        request.Location.Latitude,
-                        request.Location.Longitude,
-                        provider.Location.Latitude,
-                        provider.Location.Longitude
-                    );
-
-                    if (route.DistanceKm < bestDistance)
-                    {
-                        bestProvider = provider;
-                        bestDistance = route.DistanceKm;
-                        bestEta = route.EtaMinutes;
-                    }
-                }
-                catch
-                {
-                    continue;
-                }
-            }
-
-            if (bestProvider == null)
-                return BadRequest(new { Message = "No fue posible encontrar una grúa" });
-
-            var location = request.Location.Adapt<Location>();
-
-            _context.Locations.Add(location);
-
-            var serviceRequest = new ServiceRequest
-            {
-                ServiceType = request.ServiceType,
-                Client = client,
-                Provider = bestProvider.User,
-                Vehicle = vehicle,
-                Location = location,
-            };
-
-            _context.ServiceRequests.Add(serviceRequest);
-
-            await _context.SaveChangesAsync();
-
-            return Ok(
-                new
-                {
-                    ServiceRequestId = serviceRequest.Id,
-                    ProviderId = bestProvider.Id,
-                    ProviderName = bestProvider.User.FirstName + " " + bestProvider.User.LastName,
-                    DistanceKm = Math.Round(bestDistance, 2),
-                    EtaMinutes = Math.Round(bestEta),
-                }
-            );
-        }
-
-        */
-
         // POST: api/assistances/request
         // Crea una solicitud de auxilio. Si se especifica un providerId, se dirige a ese proveedor.
         // Si no, la solicitud queda abierta para que cualquier proveedor pueda cotizar.
@@ -416,6 +324,8 @@ namespace GruYaApi.Controllers
         }
 
         // GET: api/assistances/providers-nearby?latitude=-33.3&longitude=-66.3&rangeKm=20
+        // Obtiene una lista de proveedores cercanos a una ubicación específica, filtrando por la distancia. 
+        // Devuelve información básica del proveedor y su ubicación.
         [HttpGet("providers-nearby")]
         public async Task<ActionResult<List<ProviderLocationResponse>>> NearbyProviders(
             decimal latitude,
@@ -451,7 +361,8 @@ namespace GruYaApi.Controllers
         }
 
         // GET: api/assistances/nearby
-        // Obtiene una lista de solicitudes de servicio cercanas a una ubicación específica, filtrando por la distancia y ordenando por la distancia más cercana. La función utiliza la fórmula de Havers
+        // Obtiene una lista de solicitudes de servicio cercanas a una ubicación específica, 
+        // filtrando por la distancia y ordenando por la distancia más cercana. La función utiliza la fórmula de Havers
         [HttpGet("nearby")]
         public async Task<IActionResult> NearbyServices(
             decimal latitude,
