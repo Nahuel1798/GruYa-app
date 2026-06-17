@@ -21,6 +21,8 @@ namespace GruYaApi.DTOs.Responses
 
         public ProviderProfileResponse? ProviderProfile { get; set; }
 
+        public bool IsDirected { get; set; }
+
         public double? DistanceKm { get; set; }
         public double? EtaMinutes { get; set; }
         public string? RouteGeometry { get; set; }

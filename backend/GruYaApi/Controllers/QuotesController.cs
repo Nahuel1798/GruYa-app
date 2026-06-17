@@ -186,35 +186,17 @@ namespace GruYaApi.Controllers
                 .ToListAsync();
 
             var result = openAssistances
-                .Select(a => new
+                .Select(a =>
                 {
-                    a.Id,
-                    a.ServiceType,
-                    a.IssueType,
-                    a.Status,
-                    ClientName = $"{a.Client.FirstName} {a.Client.LastName}",
-                    OriginLatitude = a.Origin.Latitude,
-                    OriginLongitude = a.Origin.Longitude,
-                    DestinationLatitude = a.Destination.Latitude,
-                    DestinationLongitude = a.Destination.Longitude,
-                    VehicleBrand = a.Vehicle != null ? a.Vehicle.Brand : null,
-                    VehicleModel = a.Vehicle != null ? a.Vehicle.Model : null,
-                    IsDirected = false,
+                    var resp = a.Adapt<AssistanceResponse>();
+                    resp.IsDirected = false;
+                    return resp;
                 })
-                .Concat(directedAssistances.Select(a => new
+                .Concat(directedAssistances.Select(a =>
                 {
-                    a.Id,
-                    a.ServiceType,
-                    a.IssueType,
-                    a.Status,
-                    ClientName = $"{a.Client.FirstName} {a.Client.LastName}",
-                    OriginLatitude = a.Origin.Latitude,
-                    OriginLongitude = a.Origin.Longitude,
-                    DestinationLatitude = a.Destination.Latitude,
-                    DestinationLongitude = a.Destination.Longitude,
-                    VehicleBrand = a.Vehicle != null ? a.Vehicle.Brand : null,
-                    VehicleModel = a.Vehicle != null ? a.Vehicle.Model : null,
-                    IsDirected = true,
+                    var resp = a.Adapt<AssistanceResponse>();
+                    resp.IsDirected = true;
+                    return resp;
                 }))
                 .OrderByDescending(r => r.Id)
                 .ToList();
