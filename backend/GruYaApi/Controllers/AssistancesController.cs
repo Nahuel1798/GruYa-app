@@ -60,7 +60,7 @@ namespace GruYaApi.Controllers
         // POST: api/assistances/request
         // Crea una solicitud de auxilio. Si se especifica un providerId, se dirige a ese proveedor.
         // Si no, la solicitud queda abierta para que cualquier proveedor pueda cotizar.
-        [HttpPost("request")]
+                [HttpPost("request")]
         public async Task<IActionResult> RequestAssistance(
             [FromBody] CreateAssistanceRequest request
         )
@@ -71,6 +71,28 @@ namespace GruYaApi.Controllers
 
             if (client == null)
                 return NotFound(new { Message = "Cliente no encontrado" });
+
+            // Verificar si el cliente ya tiene una solicitud activa
+            var activeStatuses = new[]
+            {
+                AssistanceStatus.Pendiente,
+                AssistanceStatus.Completado,
+                AssistanceStatus.Cancelado,
+                AssistanceStatus.EnProceso
+            };
+
+            var hasActiveAssistance = await _context.Assistances.AnyAsync(a =>
+                a.ClientId == client.Id &&
+                activeStatuses.Contains(a.Status)
+            );
+
+            if (hasActiveAssistance)
+            {
+                return Conflict(new
+                {
+                    Message = "Ya tienes una solicitud de auxilio activa"
+                });
+            }
 
             var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v =>
                 v.Id == request.VehicleId
@@ -84,12 +106,19 @@ namespace GruYaApi.Controllers
             if (request.ProviderId.HasValue)
             {
                 var providerProfile = await _context
-                    .ProviderProfiles.Include(p => p.User)
-                    .FirstOrDefaultAsync(p => p.Id == request.ProviderId.Value && p.IsAvailable);
+                    .ProviderProfiles
+                    .Include(p => p.User)
+                    .FirstOrDefaultAsync(p =>
+                        p.Id == request.ProviderId.Value &&
+                        p.IsAvailable
+                    );
 
                 if (providerProfile == null)
                 {
-                    return Conflict(new { Message = "El prestador solicitado no está disponible" });
+                    return Conflict(new
+                    {
+                        Message = "El prestador solicitado no está disponible"
+                    });
                 }
 
                 providerProfileId = providerProfile.Id;
@@ -123,16 +152,18 @@ namespace GruYaApi.Controllers
                 ServiceType = request.ServiceType,
                 IssueType = request.IssueType,
                 Status = AssistanceStatus.Pendiente,
+
                 Client = client,
                 Vehicle = vehicle,
+
                 Origin = request.Origin,
                 Destination = request.Destination,
+
                 RequestedProviderProfileId = providerProfileId,
 
-                // Nuevos campos
                 DistanceKm = distanceKm,
                 EtaMinutes = etaMinutes,
-                RouteGeometry = routeGeometry,
+                RouteGeometry = routeGeometry
             };
 
             _context.Assistances.Add(assistance);
@@ -140,7 +171,30 @@ namespace GruYaApi.Controllers
             await _context.SaveChangesAsync();
 
             var response = assistance.Adapt<AssistanceResponse>();
+
             return Ok(response);
+        }
+
+        // GET: api/assistances/active
+        // Devuelve la solicitud de auxilio activa del usuario autenticado, si existe.
+        [HttpGet("active")]
+        public async Task<IActionResult> GetActiveAssistance()
+        {
+            var idUsuario = (int)HttpContext.Items["idUsuario"]!;
+
+            var assistance = await _context.Assistances
+                .Include(a => a.Origin)
+                .Include(a => a.Destination)
+                .Include(a => a.Vehicle)
+                .FirstOrDefaultAsync(a =>
+                    a.ClientId == idUsuario &&
+                    a.Status != AssistanceStatus.Completado &&
+                    a.Status != AssistanceStatus.Cancelado);
+
+            if (assistance == null)
+                return NotFound();
+
+            return Ok(assistance.Adapt<AssistanceResponse>());
         }
 
         // GET: api/assistances/{id}

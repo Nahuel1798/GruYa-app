@@ -14,7 +14,8 @@ namespace GruYaApi.Models
 
         public Location Origin { get; set; } = null!;
         public Location Destination { get; set; } = null!;
-
+        
+        public int ClientId { get; set; }
         public User Client { get; set; } = null!;
         public User? Provider { get; set; }
 
