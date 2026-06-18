@@ -32,8 +32,8 @@ namespace GruYaApi.Controllers
 
         private async Task<List<int>> GetProviderProfileIdsAsync(int userId)
         {
-            return await _context.ProviderProfiles
-                .Where(p => p.UserId == userId)
+            return await _context
+                .ProviderProfiles.Where(p => p.UserId == userId)
                 .Select(p => p.Id)
                 .ToListAsync();
         }
@@ -49,17 +49,31 @@ namespace GruYaApi.Controllers
                     .ThenInclude(a => a.Vehicle)
                 .ToListAsync();
 
-            return quotes.Select(q => new QuoteResponse
+            // Persist lazy expiration before mapping — keeps DB consistent with response
+            var now = DateTime.UtcNow;
+            var expired = quotes.Where(q => IsExpired(q)).ToList();
+            foreach (var q in expired)
             {
-                Id = q.Id,
-                AssistanceId = q.AssistanceId,
-                Price = q.Price,
-                Status = IsExpired(q) ? QuoteStatus.Expirada : q.Status,
-                CreatedAt = q.CreatedAt,
-                UpdatedAt = q.UpdatedAt,
-                ProviderName = $"{q.ProviderProfile.User.FirstName} {q.ProviderProfile.User.LastName}",
-                Assistance = q.Assistance.Adapt<AssistanceResponse>(),
-            }).ToList();
+                q.Status = QuoteStatus.Expirada;
+                q.UpdatedAt = now;
+            }
+            if (expired.Count > 0)
+                await _context.SaveChangesAsync();
+
+            return quotes
+                .Select(q => new QuoteResponse
+                {
+                    Id = q.Id,
+                    AssistanceId = q.AssistanceId,
+                    Price = q.Price,
+                    Status = q.Status,
+                    CreatedAt = q.CreatedAt,
+                    UpdatedAt = q.UpdatedAt,
+                    ProviderName =
+                        $"{q.ProviderProfile.User.FirstName} {q.ProviderProfile.User.LastName}",
+                    Assistance = q.Assistance.Adapt<AssistanceResponse>(),
+                })
+                .ToList();
         }
 
         // POST /api/quotes — Create a quote (Provider only)
@@ -75,16 +89,22 @@ namespace GruYaApi.Controllers
             if (request.Price <= 0)
                 return BadRequest(new { Message = "El precio debe ser mayor a 0" });
 
-            var assistance = await _context.Assistances.FirstOrDefaultAsync(a => a.Id == request.AssistanceId);
+            var assistance = await _context.Assistances.FirstOrDefaultAsync(a =>
+                a.Id == request.AssistanceId
+            );
             if (assistance == null)
                 return NotFound(new { Message = "Solicitud de auxilio no encontrada" });
 
             if (assistance.Status != AssistanceStatus.Pendiente)
-                return BadRequest(new { Message = "La solicitud no está abierta para cotizaciones" });
+                return BadRequest(
+                    new { Message = "La solicitud no está abierta para cotizaciones" }
+                );
 
             // Check directed request — only the targeted provider may quote
-            if (assistance.RequestedProviderProfileId.HasValue
-                && !profileIds.Contains(assistance.RequestedProviderProfileId.Value))
+            if (
+                assistance.RequestedProviderProfileId.HasValue
+                && !profileIds.Contains(assistance.RequestedProviderProfileId.Value)
+            )
                 return Forbid();
 
             var providerProfileId = profileIds.First();
@@ -93,10 +113,13 @@ namespace GruYaApi.Controllers
             var hasActiveQuote = await _context.Quotes.AnyAsync(q =>
                 q.AssistanceId == request.AssistanceId
                 && q.ProviderProfileId == providerProfileId
-                && q.Status == QuoteStatus.Pendiente);
+                && q.Status == QuoteStatus.Pendiente
+            );
 
             if (hasActiveQuote)
-                return Conflict(new { Message = "Ya tienes una cotización pendiente para esta solicitud" });
+                return Conflict(
+                    new { Message = "Ya tienes una cotización pendiente para esta solicitud" }
+                );
 
             var quote = request.Adapt<Quote>();
             quote.ProviderProfileId = providerProfileId;
@@ -107,8 +130,9 @@ namespace GruYaApi.Controllers
             _context.Quotes.Add(quote);
             await _context.SaveChangesAsync();
 
-            var response = (await MapToResponseAsync(
-                _context.Quotes.Where(q => q.Id == quote.Id))).First();
+            var response = (
+                await MapToResponseAsync(_context.Quotes.Where(q => q.Id == quote.Id))
+            ).First();
 
             return CreatedAtAction(nameof(CreateQuote), new { id = quote.Id }, response);
         }
@@ -121,7 +145,6 @@ namespace GruYaApi.Controllers
             var profileIds = await GetProviderProfileIdsAsync(userId);
 
             var query = _context.Quotes.Where(q => profileIds.Contains(q.ProviderProfileId));
-
             if (status.HasValue)
                 query = query.Where(q => q.Status == status.Value);
 
@@ -136,8 +159,8 @@ namespace GruYaApi.Controllers
         {
             var userId = (int)HttpContext.Items["idUsuario"]!;
 
-            var assistance = await _context.Assistances
-                .Include(a => a.Client)
+            var assistance = await _context
+                .Assistances.Include(a => a.Client)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(a => a.Id == assistanceId);
 
@@ -147,8 +170,8 @@ namespace GruYaApi.Controllers
             if (assistance.Client.Id != userId)
                 return Forbid();
 
-            var query = _context.Quotes
-                .Where(q => q.AssistanceId == assistanceId)
+            var query = _context
+                .Quotes.Where(q => q.AssistanceId == assistanceId)
                 .OrderByDescending(q => q.CreatedAt);
 
             return Ok(await MapToResponseAsync(query));
@@ -165,24 +188,29 @@ namespace GruYaApi.Controllers
                 return Forbid();
 
             // Open assistances where caller has no pending quote from any of their profiles
-            var openAssistances = await _context.Assistances
-                .Include(a => a.Client)
+            var openAssistances = await _context
+                .Assistances.Include(a => a.Client)
                 .Include(a => a.Vehicle)
-                .Where(a => a.Status == AssistanceStatus.Pendiente
+                .Where(a =>
+                    a.Status == AssistanceStatus.Pendiente
                     && a.RequestedProviderProfileId == null
                     && !_context.Quotes.Any(q =>
                         q.AssistanceId == a.Id
                         && profileIds.Contains(q.ProviderProfileId)
-                        && q.Status == QuoteStatus.Pendiente))
+                        && q.Status == QuoteStatus.Pendiente
+                    )
+                )
                 .ToListAsync();
 
             // Directed assistances (always shown, regardless of existing quotes)
-            var directedAssistances = await _context.Assistances
-                .Include(a => a.Client)
+            var directedAssistances = await _context
+                .Assistances.Include(a => a.Client)
                 .Include(a => a.Vehicle)
-                .Where(a => a.Status == AssistanceStatus.Pendiente
+                .Where(a =>
+                    a.Status == AssistanceStatus.Pendiente
                     && a.RequestedProviderProfileId != null
-                    && profileIds.Contains(a.RequestedProviderProfileId.Value))
+                    && profileIds.Contains(a.RequestedProviderProfileId.Value)
+                )
                 .ToListAsync();
 
             var result = openAssistances
@@ -192,12 +220,14 @@ namespace GruYaApi.Controllers
                     resp.IsDirected = false;
                     return resp;
                 })
-                .Concat(directedAssistances.Select(a =>
-                {
-                    var resp = a.Adapt<AssistanceResponse>();
-                    resp.IsDirected = true;
-                    return resp;
-                }))
+                .Concat(
+                    directedAssistances.Select(a =>
+                    {
+                        var resp = a.Adapt<AssistanceResponse>();
+                        resp.IsDirected = true;
+                        return resp;
+                    })
+                )
                 .OrderByDescending(r => r.Id)
                 .ToList();
 
@@ -210,8 +240,8 @@ namespace GruYaApi.Controllers
         {
             var userId = (int)HttpContext.Items["idUsuario"]!;
 
-            var quote = await _context.Quotes
-                .Include(q => q.Assistance)
+            var quote = await _context
+                .Quotes.Include(q => q.Assistance)
                     .ThenInclude(a => a.Client)
                 .Include(q => q.ProviderProfile)
                     .ThenInclude(pp => pp.User)
@@ -239,7 +269,12 @@ namespace GruYaApi.Controllers
             }
 
             if (quote.Status != QuoteStatus.Pendiente)
-                return Conflict(new { Message = $"La cotización no está pendiente. Estado actual: {quote.Status}" });
+                return Conflict(
+                    new
+                    {
+                        Message = $"La cotización no está pendiente. Estado actual: {quote.Status}",
+                    }
+                );
 
             // Transactional accept
             quote.Status = QuoteStatus.Aceptada;
@@ -248,10 +283,12 @@ namespace GruYaApi.Controllers
             quote.Assistance.Status = AssistanceStatus.EnProceso;
 
             // Auto-reject other pending quotes for the same assistance
-            var otherPending = await _context.Quotes
-                .Where(q => q.AssistanceId == quote.AssistanceId
+            var otherPending = await _context
+                .Quotes.Where(q =>
+                    q.AssistanceId == quote.AssistanceId
                     && q.Id != quoteId
-                    && q.Status == QuoteStatus.Pendiente)
+                    && q.Status == QuoteStatus.Pendiente
+                )
                 .ToListAsync();
 
             foreach (var other in otherPending)
@@ -262,8 +299,9 @@ namespace GruYaApi.Controllers
 
             await _context.SaveChangesAsync();
 
-            var response = (await MapToResponseAsync(
-                _context.Quotes.Where(q => q.Id == quoteId))).First();
+            var response = (
+                await MapToResponseAsync(_context.Quotes.Where(q => q.Id == quoteId))
+            ).First();
 
             return Ok(response);
         }
@@ -274,8 +312,8 @@ namespace GruYaApi.Controllers
         {
             var userId = (int)HttpContext.Items["idUsuario"]!;
 
-            var quote = await _context.Quotes
-                .Include(q => q.Assistance)
+            var quote = await _context
+                .Quotes.Include(q => q.Assistance)
                     .ThenInclude(a => a.Client)
                 .FirstOrDefaultAsync(q => q.Id == quoteId);
 
@@ -296,14 +334,20 @@ namespace GruYaApi.Controllers
             }
 
             if (quote.Status != QuoteStatus.Pendiente)
-                return Conflict(new { Message = $"La cotización no está pendiente. Estado actual: {quote.Status}" });
+                return Conflict(
+                    new
+                    {
+                        Message = $"La cotización no está pendiente. Estado actual: {quote.Status}",
+                    }
+                );
 
             quote.Status = QuoteStatus.Rechazada;
             quote.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            var response = (await MapToResponseAsync(
-                _context.Quotes.Where(q => q.Id == quoteId))).First();
+            var response = (
+                await MapToResponseAsync(_context.Quotes.Where(q => q.Id == quoteId))
+            ).First();
 
             return Ok(response);
         }
@@ -314,8 +358,8 @@ namespace GruYaApi.Controllers
         {
             var userId = (int)HttpContext.Items["idUsuario"]!;
 
-            var quote = await _context.Quotes
-                .Include(q => q.ProviderProfile)
+            var quote = await _context
+                .Quotes.Include(q => q.ProviderProfile)
                 .FirstOrDefaultAsync(q => q.Id == quoteId);
 
             if (quote == null)
@@ -336,14 +380,20 @@ namespace GruYaApi.Controllers
             }
 
             if (quote.Status != QuoteStatus.Pendiente)
-                return Conflict(new { Message = $"La cotización no está pendiente. Estado actual: {quote.Status}" });
+                return Conflict(
+                    new
+                    {
+                        Message = $"La cotización no está pendiente. Estado actual: {quote.Status}",
+                    }
+                );
 
             quote.Status = QuoteStatus.Cancelada;
             quote.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            var response = (await MapToResponseAsync(
-                _context.Quotes.Where(q => q.Id == quoteId))).First();
+            var response = (
+                await MapToResponseAsync(_context.Quotes.Where(q => q.Id == quoteId))
+            ).First();
 
             return Ok(response);
         }
