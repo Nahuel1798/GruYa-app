@@ -38,6 +38,28 @@ namespace GruYaApi.Controllers
                 .ToListAsync();
         }
 
+        /// <summary>
+        /// Persist lazy expiration for pending quotes older than 1h.
+        /// Call before any query that filters by status on the DB side.
+        /// </summary>
+        private async Task ExpireStaleQuotesAsync(IQueryable<Quote> baseQuery)
+        {
+            var cutoff = DateTime.UtcNow - ExpirationWindow;
+            var stale = await baseQuery
+                .Where(q => q.Status == QuoteStatus.Pendiente && q.CreatedAt < cutoff)
+                .ToListAsync();
+
+            if (stale.Count == 0)
+                return;
+
+            foreach (var q in stale)
+            {
+                q.Status = QuoteStatus.Expirada;
+                q.UpdatedAt = DateTime.UtcNow;
+            }
+            await _context.SaveChangesAsync();
+        }
+
         private async Task<List<QuoteResponse>> MapToResponseAsync(IQueryable<Quote> query)
         {
             var quotes = await query
@@ -48,17 +70,6 @@ namespace GruYaApi.Controllers
                 .Include(q => q.Assistance)
                     .ThenInclude(a => a.Vehicle)
                 .ToListAsync();
-
-            // Persist lazy expiration before mapping — keeps DB consistent with response
-            var now = DateTime.UtcNow;
-            var expired = quotes.Where(q => IsExpired(q)).ToList();
-            foreach (var q in expired)
-            {
-                q.Status = QuoteStatus.Expirada;
-                q.UpdatedAt = now;
-            }
-            if (expired.Count > 0)
-                await _context.SaveChangesAsync();
 
             return quotes
                 .Select(q => new QuoteResponse
@@ -109,6 +120,12 @@ namespace GruYaApi.Controllers
 
             var providerProfileId = profileIds.First();
 
+            // Expire stale quotes before checking for duplicate active quote
+            var myQuoteQuery = _context.Quotes.Where(q =>
+                q.AssistanceId == request.AssistanceId
+                && q.ProviderProfileId == providerProfileId);
+            await ExpireStaleQuotesAsync(myQuoteQuery);
+
             // Check duplicate active quote
             var hasActiveQuote = await _context.Quotes.AnyAsync(q =>
                 q.AssistanceId == request.AssistanceId
@@ -144,7 +161,10 @@ namespace GruYaApi.Controllers
             var userId = (int)HttpContext.Items["idUsuario"]!;
             var profileIds = await GetProviderProfileIdsAsync(userId);
 
-            var query = _context.Quotes.Where(q => profileIds.Contains(q.ProviderProfileId));
+            var baseQuery = _context.Quotes.Where(q => profileIds.Contains(q.ProviderProfileId));
+            await ExpireStaleQuotesAsync(baseQuery);
+
+            var query = baseQuery;
             if (status.HasValue)
                 query = query.Where(q => q.Status == status.Value);
 
@@ -186,6 +206,10 @@ namespace GruYaApi.Controllers
 
             if (profileIds.Count == 0)
                 return Forbid();
+
+            // Expire stale quotes before checking for pending ones
+            var myQuotesQuery = _context.Quotes.Where(q => profileIds.Contains(q.ProviderProfileId));
+            await ExpireStaleQuotesAsync(myQuotesQuery);
 
             // Open assistances where caller has no pending quote from any of their profiles
             var openAssistances = await _context
