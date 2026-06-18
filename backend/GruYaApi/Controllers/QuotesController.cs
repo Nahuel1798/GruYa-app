@@ -154,9 +154,9 @@ namespace GruYaApi.Controllers
             return CreatedAtAction(nameof(CreateQuote), new { id = quote.Id }, response);
         }
 
-        // GET /api/quotes/mine — List caller's quotes, optional ?status= filter
+        // GET /api/quotes/mine — List caller's quotes, optional ?status= filter (multi-value)
         [HttpGet("mine")]
-        public async Task<IActionResult> GetMyQuotes([FromQuery] QuoteStatus? status)
+        public async Task<IActionResult> GetMyQuotes([FromQuery] List<QuoteStatus>? status)
         {
             var userId = (int)HttpContext.Items["idUsuario"]!;
             var profileIds = await GetProviderProfileIdsAsync(userId);
@@ -165,8 +165,8 @@ namespace GruYaApi.Controllers
             await ExpireStaleQuotesAsync(baseQuery);
 
             var query = baseQuery;
-            if (status.HasValue)
-                query = query.Where(q => q.Status == status.Value);
+            if (status?.Count > 0)
+                query = query.Where(q => status.Contains(q.Status));
 
             query = query.OrderByDescending(q => q.CreatedAt);
 

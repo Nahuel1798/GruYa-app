@@ -76,8 +76,6 @@ namespace GruYaApi.Controllers
             var activeStatuses = new[]
             {
                 AssistanceStatus.Pendiente,
-                AssistanceStatus.Completado,
-                AssistanceStatus.Cancelado,
                 AssistanceStatus.EnProceso
             };
 
