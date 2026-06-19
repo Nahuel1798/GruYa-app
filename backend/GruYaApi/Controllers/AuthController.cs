@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using GruYaApi.Data;
+using GruYaApi.DTOs.Request;
 using GruYaApi.DTOs.Requests;
 using GruYaApi.DTOs.Responses;
 using GruYaApi.Models;
@@ -139,6 +140,23 @@ namespace GruYaApi.Controllers
         public IActionResult ValidateJwt()
         {
             return Ok();
+        }
+
+        // PATCH: api/auth/fcm-token
+        [HttpPatch("fcm-token")]
+        public async Task<IActionResult> UpdateFcmToken([FromBody] FcmTokenRequest request)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+                return NotFound(new { message = "Usuario no encontrado" });
+
+            user.FcmToken = request.Token;
+            Console.WriteLine("token " + user.FcmToken);
+            await _context.SaveChangesAsync();
+
+            return Ok(user.Adapt<UserResponse>());
         }
     }
 }

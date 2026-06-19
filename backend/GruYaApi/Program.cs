@@ -1,5 +1,7 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using FirebaseAdmin;
+using Google.Apis.Auth.OAuth2;
 using GruYaApi.Data;
 using GruYaApi.Filters;
 using GruYaApi.Hubs;
@@ -45,6 +47,27 @@ builder
 var connection = configuration["ConnectionStrings:PostgreSQL"];
 builder.Services.AddDbContext<DataContext>(options => options.UseNpgsql(connection));
 builder.Services.AddHttpClient<OsrmService>();
+var firebaseConfig = File.ReadAllText("firebase/firebase-credentials.json");
+
+// --- Firebase initialization (optional) ---
+// var firebaseConfig = configuration["FIREBASE_CONFIG"];
+if (!string.IsNullOrEmpty(firebaseConfig))
+{
+    try
+    {
+        var credential = GoogleCredential.FromJson(firebaseConfig);
+        FirebaseApp.Create(new AppOptions { Credential = credential });
+        builder.Services.AddScoped<INotificationService, NotificationService>();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Warning: Failed to initialize Firebase: {ex.Message}");
+    }
+}
+else
+{
+    Console.WriteLine("Warning: FIREBASE_CONFIG not set — FCM notifications disabled");
+}
 
 var key =
     configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is not configured");

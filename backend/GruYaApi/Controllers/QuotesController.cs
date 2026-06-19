@@ -3,6 +3,7 @@ using GruYaApi.DTOs.Requests;
 using GruYaApi.DTOs.Responses;
 using GruYaApi.Filters;
 using GruYaApi.Models;
+using GruYaApi.Service;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,11 +18,13 @@ namespace GruYaApi.Controllers
     public class QuotesController : ControllerBase
     {
         private readonly DataContext _context;
+        private readonly INotificationService? _notificationService;
         private static readonly TimeSpan ExpirationWindow = TimeSpan.FromHours(1);
 
-        public QuotesController(DataContext context)
+        public QuotesController(DataContext context, INotificationService? notificationService)
         {
             _context = context;
+            _notificationService = notificationService;
         }
 
         private static bool IsExpired(Quote quote)
@@ -150,6 +153,23 @@ namespace GruYaApi.Controllers
             var response = (
                 await MapToResponseAsync(_context.Quotes.Where(q => q.Id == quote.Id))
             ).First();
+
+            // Notify client of new quote (NotificationService never throws)
+            if (_notificationService is not null)
+            {
+                await _notificationService.SendToUserAsync(
+                    assistance.ClientId,
+                    "Recibiste una cotización",
+                    $"{response.ProviderName} cotizó ${request.Price}",
+                    new Dictionary<string, string>
+                    {
+                        ["type"] = "new_quote",
+                        ["assistanceId"] = assistance.Id.ToString(),
+                        ["quoteId"] = quote.Id.ToString(),
+                        ["providerName"] = response.ProviderName,
+                        ["price"] = request.Price.ToString(),
+                    });
+            }
 
             return CreatedAtAction(nameof(CreateQuote), new { id = quote.Id }, response);
         }
@@ -323,6 +343,35 @@ namespace GruYaApi.Controllers
 
             await _context.SaveChangesAsync();
 
+            // Notify provider and client (NotificationService never throws)
+            if (_notificationService is not null)
+            {
+                var companyName = quote.ProviderProfile.CompanyName ?? quote.ProviderProfile.User.FirstName;
+
+                // Notify winning provider
+                await _notificationService.SendToUserAsync(
+                    quote.ProviderProfile.UserId,
+                    "¡Servicio asignado!",
+                    "Tu cotización fue aceptada",
+                    new Dictionary<string, string>
+                    {
+                        ["type"] = "quote_accepted_provider",
+                        ["assistanceId"] = quote.AssistanceId.ToString(),
+                        ["providerProfileId"] = quote.ProviderProfileId.ToString(),
+                    });
+
+                // Notify client (confirmation)
+                await _notificationService.SendToUserAsync(
+                    quote.Assistance.Client.Id,
+                    "Tu solicitud está siendo atendida",
+                    $"{companyName} está en camino",
+                    new Dictionary<string, string>
+                    {
+                        ["type"] = "quote_accepted_client",
+                        ["assistanceId"] = quote.AssistanceId.ToString(),
+                    });
+            }
+
             var response = (
                 await MapToResponseAsync(_context.Quotes.Where(q => q.Id == quoteId))
             ).First();
@@ -339,6 +388,8 @@ namespace GruYaApi.Controllers
             var quote = await _context
                 .Quotes.Include(q => q.Assistance)
                     .ThenInclude(a => a.Client)
+                .Include(q => q.ProviderProfile)
+                    .ThenInclude(pp => pp.User)
                 .FirstOrDefaultAsync(q => q.Id == quoteId);
 
             if (quote == null)
@@ -368,6 +419,20 @@ namespace GruYaApi.Controllers
             quote.Status = QuoteStatus.Rechazada;
             quote.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
+
+            // Notify rejected provider (NotificationService never throws)
+            if (_notificationService is not null)
+            {
+                await _notificationService.SendToUserAsync(
+                    quote.ProviderProfile.UserId,
+                    "Cotización rechazada",
+                    "Tu cotización fue rechazada",
+                    new Dictionary<string, string>
+                    {
+                        ["type"] = "quote_rejected",
+                        ["assistanceId"] = quote.AssistanceId.ToString(),
+                    });
+            }
 
             var response = (
                 await MapToResponseAsync(_context.Quotes.Where(q => q.Id == quoteId))

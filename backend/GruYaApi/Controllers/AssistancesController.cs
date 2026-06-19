@@ -3,6 +3,7 @@ using GruYaApi.DTOs.Requests;
 using GruYaApi.DTOs.Responses;
 using GruYaApi.Filters;
 using GruYaApi.Models;
+using GruYaApi.Service;
 using GruYaApi.Services;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
@@ -19,11 +20,13 @@ namespace GruYaApi.Controllers
     {
         private readonly DataContext _context;
         private readonly OsrmService _osrmService;
+        private readonly INotificationService? _notificationService;
 
-        public AssistancesController(DataContext context, OsrmService osrmService)
+        public AssistancesController(DataContext context, OsrmService osrmService, INotificationService? notificationService)
         {
             _context = context;
             _osrmService = osrmService;
+            _notificationService = notificationService;
         }
 
         // Función para calcular la distancia entre dos puntos geográficos utilizando la fórmula de Haversine
@@ -167,6 +170,67 @@ namespace GruYaApi.Controllers
             _context.Assistances.Add(assistance);
 
             await _context.SaveChangesAsync();
+
+            // Notify providers (fire-and-forget: NotificationService never throws)
+            if (_notificationService is not null)
+            {
+                if (providerProfileId.HasValue)
+                {
+                    // Directed: notify specific provider
+                    var provider = await _context.ProviderProfiles
+                        .Include(p => p.User)
+                        .FirstOrDefaultAsync(p => p.Id == providerProfileId.Value);
+
+                    if (provider != null)
+                    {
+                        await _notificationService.SendToUserAsync(
+                            provider.UserId,
+                            "Te han solicitado un servicio",
+                            $"{request.ServiceType} - {request.IssueType}",
+                            new Dictionary<string, string>
+                            {
+                                ["type"] = "directed_assistance",
+                                ["assistanceId"] = assistance.Id.ToString(),
+                                ["serviceType"] = request.ServiceType.ToString(),
+                                ["issueType"] = request.IssueType.ToString(),
+                            });
+                    }
+                }
+                else
+                {
+                    // Open: notify nearby available providers
+                    var nearbyProviders = await _context.ProviderProfiles
+                        .Include(p => p.User)
+                        .Where(p => p.IsAvailable)
+                        .ToListAsync();
+
+                    var matchingTokens = nearbyProviders
+                        .Where(p =>
+                            DistanceInKm(
+                                request.Origin.Latitude, request.Origin.Longitude,
+                                p.Location.Latitude, p.Location.Longitude) <= 20m
+                            && !string.IsNullOrWhiteSpace(p.User.FcmToken))
+                        .Select(p => p.User.FcmToken!)
+                        .ToList();
+
+                    if (matchingTokens.Count > 0)
+                    {
+                        await _notificationService.SendToMultipleAsync(
+                            matchingTokens,
+                            "Nueva solicitud de auxilio cerca",
+                            $"Tipo: {request.ServiceType}",
+                            new Dictionary<string, string>
+                            {
+                                ["type"] = "new_assistance",
+                                ["assistanceId"] = assistance.Id.ToString(),
+                                ["serviceType"] = request.ServiceType.ToString(),
+                                ["issueType"] = request.IssueType.ToString(),
+                                ["originLat"] = request.Origin.Latitude.ToString(),
+                                ["originLon"] = request.Origin.Longitude.ToString(),
+                            });
+                    }
+                }
+            }
 
             var response = assistance.Adapt<AssistanceResponse>();
 
