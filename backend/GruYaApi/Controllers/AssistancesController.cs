@@ -288,18 +288,22 @@ namespace GruYaApi.Controllers
             return Ok(response);
         }
 
-        [HttpPatch("{id}/cancel")]
-        public async Task<IActionResult> CancelAssistance(int id)
+        [HttpPatch("active/cancel")]
+        public async Task<IActionResult> CancelAssistance()
         {
-            var assistance = await _context.Assistances.FirstOrDefaultAsync(a => a.Id == id);
+            var idUsuario = (int)HttpContext.Items["idUsuario"]!;
+
+            var assistance = await _context.Assistances.FirstOrDefaultAsync(a =>
+                a.ClientId == idUsuario
+                && a.Status != AssistanceStatus.Completado
+                && a.Status != AssistanceStatus.Cancelado
+            );
 
             if (assistance == null)
+                return NotFound();
+            if (assistance == null)
             {
-                return NotFound(new { Message = "Asistencia no encontrada" });
-            }
-            if (AssistanceStatus.Cancelado == assistance.Status)
-            {
-                return Conflict(new { message = "La solicitud ya está cancelada" });
+                return NotFound(new { Message = "No se encontró una asistencia activa" });
             }
             assistance.Status = AssistanceStatus.Cancelado;
             await _context.SaveChangesAsync();
