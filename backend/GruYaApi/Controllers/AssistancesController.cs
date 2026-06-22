@@ -22,7 +22,11 @@ namespace GruYaApi.Controllers
         private readonly OsrmService _osrmService;
         private readonly INotificationService? _notificationService;
 
-        public AssistancesController(DataContext context, OsrmService osrmService, INotificationService? notificationService)
+        public AssistancesController(
+            DataContext context,
+            OsrmService osrmService,
+            INotificationService? notificationService
+        )
         {
             _context = context;
             _osrmService = osrmService;
@@ -63,7 +67,7 @@ namespace GruYaApi.Controllers
         // POST: api/assistances/request
         // Crea una solicitud de auxilio. Si se especifica un providerId, se dirige a ese proveedor.
         // Si no, la solicitud queda abierta para que cualquier proveedor pueda cotizar.
-                [HttpPost("request")]
+        [HttpPost("request")]
         public async Task<IActionResult> RequestAssistance(
             [FromBody] CreateAssistanceRequest request
         )
@@ -76,23 +80,15 @@ namespace GruYaApi.Controllers
                 return NotFound(new { Message = "Cliente no encontrado" });
 
             // Verificar si el cliente ya tiene una solicitud activa
-            var activeStatuses = new[]
-            {
-                AssistanceStatus.Pendiente,
-                AssistanceStatus.EnProceso
-            };
+            var activeStatuses = new[] { AssistanceStatus.Pendiente, AssistanceStatus.EnProceso };
 
             var hasActiveAssistance = await _context.Assistances.AnyAsync(a =>
-                a.ClientId == client.Id &&
-                activeStatuses.Contains(a.Status)
+                a.ClientId == client.Id && activeStatuses.Contains(a.Status)
             );
 
             if (hasActiveAssistance)
             {
-                return Conflict(new
-                {
-                    Message = "Ya tienes una solicitud de auxilio activa"
-                });
+                return Conflict(new { Message = "Ya tienes una solicitud de auxilio activa" });
             }
 
             var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v =>
@@ -107,19 +103,12 @@ namespace GruYaApi.Controllers
             if (request.ProviderId.HasValue)
             {
                 var providerProfile = await _context
-                    .ProviderProfiles
-                    .Include(p => p.User)
-                    .FirstOrDefaultAsync(p =>
-                        p.Id == request.ProviderId.Value &&
-                        p.IsAvailable
-                    );
+                    .ProviderProfiles.Include(p => p.User)
+                    .FirstOrDefaultAsync(p => p.Id == request.ProviderId.Value && p.IsAvailable);
 
                 if (providerProfile == null)
                 {
-                    return Conflict(new
-                    {
-                        Message = "El prestador solicitado no está disponible"
-                    });
+                    return Conflict(new { Message = "El prestador solicitado no está disponible" });
                 }
 
                 providerProfileId = providerProfile.Id;
@@ -164,7 +153,7 @@ namespace GruYaApi.Controllers
 
                 DistanceKm = distanceKm,
                 EtaMinutes = etaMinutes,
-                RouteGeometry = routeGeometry
+                RouteGeometry = routeGeometry,
             };
 
             _context.Assistances.Add(assistance);
@@ -177,8 +166,8 @@ namespace GruYaApi.Controllers
                 if (providerProfileId.HasValue)
                 {
                     // Directed: notify specific provider
-                    var provider = await _context.ProviderProfiles
-                        .Include(p => p.User)
+                    var provider = await _context
+                        .ProviderProfiles.Include(p => p.User)
                         .FirstOrDefaultAsync(p => p.Id == providerProfileId.Value);
 
                     if (provider != null)
@@ -193,23 +182,28 @@ namespace GruYaApi.Controllers
                                 ["assistanceId"] = assistance.Id.ToString(),
                                 ["serviceType"] = request.ServiceType.ToString(),
                                 ["issueType"] = request.IssueType.ToString(),
-                            });
+                            }
+                        );
                     }
                 }
                 else
                 {
                     // Open: notify nearby available providers
-                    var nearbyProviders = await _context.ProviderProfiles
-                        .Include(p => p.User)
+                    var nearbyProviders = await _context
+                        .ProviderProfiles.Include(p => p.User)
                         .Where(p => p.IsAvailable)
                         .ToListAsync();
 
                     var matchingTokens = nearbyProviders
                         .Where(p =>
                             DistanceInKm(
-                                request.Origin.Latitude, request.Origin.Longitude,
-                                p.Location.Latitude, p.Location.Longitude) <= 20m
-                            && !string.IsNullOrWhiteSpace(p.User.FcmToken))
+                                request.Origin.Latitude,
+                                request.Origin.Longitude,
+                                p.Location.Latitude,
+                                p.Location.Longitude
+                            ) <= 20m
+                            && !string.IsNullOrWhiteSpace(p.User.FcmToken)
+                        )
                         .Select(p => p.User.FcmToken!)
                         .ToList();
 
@@ -227,7 +221,8 @@ namespace GruYaApi.Controllers
                                 ["issueType"] = request.IssueType.ToString(),
                                 ["originLat"] = request.Origin.Latitude.ToString(),
                                 ["originLon"] = request.Origin.Longitude.ToString(),
-                            });
+                            }
+                        );
                     }
                 }
             }
@@ -244,14 +239,15 @@ namespace GruYaApi.Controllers
         {
             var idUsuario = (int)HttpContext.Items["idUsuario"]!;
 
-            var assistance = await _context.Assistances
-                .Include(a => a.Origin)
+            var assistance = await _context
+                .Assistances.Include(a => a.Origin)
                 .Include(a => a.Destination)
                 .Include(a => a.Vehicle)
                 .FirstOrDefaultAsync(a =>
-                    a.ClientId == idUsuario &&
-                    a.Status != AssistanceStatus.Completado &&
-                    a.Status != AssistanceStatus.Cancelado);
+                    a.ClientId == idUsuario
+                    && a.Status != AssistanceStatus.Completado
+                    && a.Status != AssistanceStatus.Cancelado
+                );
 
             if (assistance == null)
                 return NotFound();
@@ -283,14 +279,32 @@ namespace GruYaApi.Controllers
             if (assistance.Provider != null)
             {
                 response.ProviderProfile = await _context
-                    .ProviderProfiles
-                    .AsNoTracking()
+                    .ProviderProfiles.AsNoTracking()
                     .Where(pp => pp.UserId == assistance.Provider.Id)
                     .ProjectToType<ProviderProfileResponse>()
                     .FirstOrDefaultAsync();
             }
 
             return Ok(response);
+        }
+
+        [HttpPatch("{id}/cancel")]
+        public async Task<IActionResult> CancelAssistance(int id)
+        {
+            var assistance = await _context.Assistances.FirstOrDefaultAsync(a => a.Id == id);
+
+            if (assistance == null)
+            {
+                return NotFound(new { Message = "Asistencia no encontrada" });
+            }
+            if (AssistanceStatus.Cancelado == assistance.Status)
+            {
+                return Conflict(new { message = "La solicitud ya está cancelada" });
+            }
+            assistance.Status = AssistanceStatus.Cancelado;
+            await _context.SaveChangesAsync();
+
+            return Ok();
         }
 
         // GET: api/assistances/my
@@ -314,9 +328,7 @@ namespace GruYaApi.Controllers
                 query = query.Where(a => a.Status == status.Value);
             }
 
-            var assistances = await query
-                .OrderByDescending(a => a.Id)
-                .ToListAsync();
+            var assistances = await query.OrderByDescending(a => a.Id).ToListAsync();
 
             var response = assistances.Select(a =>
             {
@@ -325,8 +337,7 @@ namespace GruYaApi.Controllers
                 if (a.Provider != null)
                 {
                     dto.ProviderProfile = _context
-                        .ProviderProfiles
-                        .AsNoTracking()
+                        .ProviderProfiles.AsNoTracking()
                         .Where(pp => pp.UserId == a.Provider.Id)
                         .ProjectToType<ProviderProfileResponse>()
                         .FirstOrDefault();
@@ -440,7 +451,7 @@ namespace GruYaApi.Controllers
         }
 
         // GET: api/assistances/providers-nearby?latitude=-33.3&longitude=-66.3&rangeKm=20
-        // Obtiene una lista de proveedores cercanos a una ubicación específica, filtrando por la distancia. 
+        // Obtiene una lista de proveedores cercanos a una ubicación específica, filtrando por la distancia.
         // Devuelve información básica del proveedor y su ubicación.
         [HttpGet("providers-nearby")]
         public async Task<ActionResult<List<ProviderLocationResponse>>> NearbyProviders(
@@ -477,7 +488,7 @@ namespace GruYaApi.Controllers
         }
 
         // GET: api/assistances/nearby
-        // Obtiene una lista de solicitudes de servicio cercanas a una ubicación específica, 
+        // Obtiene una lista de solicitudes de servicio cercanas a una ubicación específica,
         // filtrando por la distancia y ordenando por la distancia más cercana. La función utiliza la fórmula de Havers
         [HttpGet("nearby")]
         public async Task<IActionResult> NearbyServices(

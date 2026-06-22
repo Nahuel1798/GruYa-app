@@ -153,7 +153,6 @@ namespace GruYaApi.Controllers
                 return NotFound(new { message = "Usuario no encontrado" });
 
             user.FcmToken = request.Token;
-            Console.WriteLine("token " + user.FcmToken);
             await _context.SaveChangesAsync();
 
             return Ok(user.Adapt<UserResponse>());
