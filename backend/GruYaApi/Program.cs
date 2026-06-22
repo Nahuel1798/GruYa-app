@@ -47,7 +47,14 @@ builder
 var connection = configuration["ConnectionStrings:PostgreSQL"];
 builder.Services.AddDbContext<DataContext>(options => options.UseNpgsql(connection));
 builder.Services.AddHttpClient<OsrmService>();
-builder.Services.AddHttpClient<OverpassService>();
+builder.Services.AddHttpClient<OverpassService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "GruYa/1.0"
+    );
+});
 var firebaseConfig = File.ReadAllText("firebase/firebase-credentials.json");
 
 // --- Firebase initialization (optional) ---

@@ -14,6 +14,7 @@ namespace GruYaApi.Controllers
             _overpassService = overpassService;
         }
 
+        // GET api/fuelstations?lat=...&lon=...&radius=...
         [HttpGet]
         public async Task<IActionResult> GetFuelStations(
             [FromQuery] double lat,
