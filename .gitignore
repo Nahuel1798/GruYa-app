@@ -69,3 +69,4 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+/backend/GruYaApi/firebase
