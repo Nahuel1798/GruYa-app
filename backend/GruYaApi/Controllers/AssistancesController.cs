@@ -255,6 +255,64 @@ namespace GruYaApi.Controllers
             return Ok(assistance.Adapt<AssistanceResponse>());
         }
 
+        // PUT: api/assistances/{id}/start-trip
+        // Permite al proveedor asignado iniciar el viaje (cambia estado a EnProceso y notifica al cliente)
+        [HttpPut("{id}/start-trip")]
+        public async Task<IActionResult> StartTrip(int id)
+        {
+            var userId = (int)HttpContext.Items["idUsuario"]!;
+
+            var assistance = await _context
+                .Assistances.Include(a => a.Client)
+                .Include(a => a.Provider)
+                .Include(a => a.Vehicle)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (assistance == null)
+                return NotFound(new { Message = "Asistencia no encontrada" });
+
+            // Verificar que el usuario autenticado es el proveedor asignado
+            if (assistance.Provider == null || assistance.Provider.Id != userId)
+                return Forbid();
+
+            // Verificar que la asistencia está en estado válido para iniciar
+            if (assistance.Status == AssistanceStatus.Completado || assistance.Status == AssistanceStatus.Cancelado)
+                return Conflict(new { Message = "La asistencia ya ha finalizado" });
+
+            if (assistance.Status == AssistanceStatus.EnProceso)
+                return Conflict(new { Message = "El viaje ya ha sido iniciado" });
+
+            // Cambiar estado a EnProceso
+            assistance.Status = AssistanceStatus.EnProceso;
+            await _context.SaveChangesAsync();
+
+            // Session ID for SignalR location tracking
+            var trackingSessionId = $"assistance-{assistance.Id}";
+
+            // Notificar al cliente que el proveedor ha iniciado el viaje
+            if (_notificationService is not null)
+            {
+                await _notificationService.SendToUserAsync(
+                    assistance.ClientId,
+                    "Tu proveedor ha iniciado el viaje",
+                    "El proveedor está en camino hacia tu ubicación",
+                    new Dictionary<string, string>
+                    {
+                        ["type"] = "trip_started",
+                        ["assistanceId"] = assistance.Id.ToString(),
+                        ["providerId"] = assistance.Provider!.Id.ToString(),
+                        ["trackingSessionId"] = trackingSessionId,
+                    });
+            }
+
+            var response = new TripStartedResponse
+            {
+                IdAssistance = assistance.Id,
+                TrackingSessionId = trackingSessionId
+            };
+            return Ok(response);
+        }
+
         // GET: api/assistances/{id}
         // Obtiene los detalles de una solicitud de auxilio
         [HttpGet("{id}")]

@@ -26,5 +26,12 @@ namespace GruYaApi.DTOs.Responses
         public double? DistanceKm { get; set; }
         public double? EtaMinutes { get; set; }
         public string? RouteGeometry { get; set; }
+
+        /// <summary>
+        /// Session ID for SignalR location tracking (format: "assistance-{id}").
+        /// Provider should call StartTracking(sessionId) on LocationHub.
+        /// Client should call WatchSession(sessionId) on LocationHub.
+        /// </summary>
+        public string? TrackingSessionId { get; set; }
     }
 }

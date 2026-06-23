@@ -125,8 +125,8 @@ namespace GruYaApi.Controllers
 
             // Expire stale quotes before checking for duplicate active quote
             var myQuoteQuery = _context.Quotes.Where(q =>
-                q.AssistanceId == request.AssistanceId
-                && q.ProviderProfileId == providerProfileId);
+                q.AssistanceId == request.AssistanceId && q.ProviderProfileId == providerProfileId
+            );
             await ExpireStaleQuotesAsync(myQuoteQuery);
 
             // Check duplicate active quote
@@ -168,7 +168,8 @@ namespace GruYaApi.Controllers
                         ["quoteId"] = quote.Id.ToString(),
                         ["providerName"] = response.ProviderName,
                         ["price"] = request.Price.ToString(),
-                    });
+                    }
+                );
             }
 
             return CreatedAtAction(nameof(CreateQuote), new { id = quote.Id }, response);
@@ -228,7 +229,9 @@ namespace GruYaApi.Controllers
                 return Forbid();
 
             // Expire stale quotes before checking for pending ones
-            var myQuotesQuery = _context.Quotes.Where(q => profileIds.Contains(q.ProviderProfileId));
+            var myQuotesQuery = _context.Quotes.Where(q =>
+                profileIds.Contains(q.ProviderProfileId)
+            );
             await ExpireStaleQuotesAsync(myQuotesQuery);
 
             // Open assistances where caller has no pending quote from any of their profiles
@@ -324,7 +327,6 @@ namespace GruYaApi.Controllers
             quote.Status = QuoteStatus.Aceptada;
             quote.UpdatedAt = DateTime.UtcNow;
             quote.Assistance.Provider = quote.ProviderProfile.User;
-            quote.Assistance.Status = AssistanceStatus.EnProceso;
 
             // Auto-reject other pending quotes for the same assistance
             var otherPending = await _context
@@ -346,7 +348,8 @@ namespace GruYaApi.Controllers
             // Notify provider and client (NotificationService never throws)
             if (_notificationService is not null)
             {
-                var companyName = quote.ProviderProfile.CompanyName ?? quote.ProviderProfile.User.FirstName;
+                var companyName =
+                    quote.ProviderProfile.CompanyName ?? quote.ProviderProfile.User.FirstName;
 
                 // Notify winning provider
                 await _notificationService.SendToUserAsync(
@@ -358,7 +361,8 @@ namespace GruYaApi.Controllers
                         ["type"] = "quote_accepted_provider",
                         ["assistanceId"] = quote.AssistanceId.ToString(),
                         ["providerProfileId"] = quote.ProviderProfileId.ToString(),
-                    });
+                    }
+                );
 
                 // Notify client (confirmation)
                 await _notificationService.SendToUserAsync(
@@ -369,7 +373,8 @@ namespace GruYaApi.Controllers
                     {
                         ["type"] = "quote_accepted_client",
                         ["assistanceId"] = quote.AssistanceId.ToString(),
-                    });
+                    }
+                );
             }
 
             var response = (
@@ -431,7 +436,8 @@ namespace GruYaApi.Controllers
                     {
                         ["type"] = "quote_rejected",
                         ["assistanceId"] = quote.AssistanceId.ToString(),
-                    });
+                    }
+                );
             }
 
             var response = (
