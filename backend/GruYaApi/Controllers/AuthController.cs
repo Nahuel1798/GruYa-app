@@ -4,6 +4,7 @@ using GruYaApi.DTOs.Request;
 using GruYaApi.DTOs.Requests;
 using GruYaApi.DTOs.Responses;
 using GruYaApi.Models;
+using GruYaApi.Filters;
 using GruYaApi.Service;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
@@ -140,6 +141,24 @@ namespace GruYaApi.Controllers
         public IActionResult ValidateJwt()
         {
             return Ok();
+        }
+
+        // PATCH: api/auth/password
+        [ServiceFilter(typeof(UserExists))]
+        [HttpPatch("password")]
+        public async Task<IActionResult> UpdatePassword(UpdatePasswordRequest request)
+        {
+            var userId = (int)HttpContext.Items["idUsuario"]!;
+
+            var user = await _context.Users.FindAsync(userId);
+
+            if (!_hashService.VerifyPassword(request.Old, user!.Password))
+                return BadRequest(new { message = "La contraseña actual es incorrecta" });
+
+            user.Password = _hashService.HashPassword(request.New);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Contraseña actualizada exitosamente" });
         }
 
         // PATCH: api/auth/fcm-token
