@@ -21,6 +21,7 @@ namespace GruYaApi.Controllers
         private readonly DataContext _context;
         private readonly JwtTokenService _jwtTokenService;
         private readonly HashService _hashService;
+        private const string UserIdKey = "idUsuario";
 
         public AuthController(
             DataContext context,
@@ -148,7 +149,7 @@ namespace GruYaApi.Controllers
         [HttpPatch("password")]
         public async Task<IActionResult> UpdatePassword(UpdatePasswordRequest request)
         {
-            var userId = (int)HttpContext.Items["idUsuario"]!;
+            var userId = (int)HttpContext.Items[UserIdKey!];
 
             var user = await _context.Users.FindAsync(userId);
 

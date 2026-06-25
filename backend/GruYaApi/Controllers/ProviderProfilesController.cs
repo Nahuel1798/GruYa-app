@@ -17,6 +17,7 @@ namespace GruYaApi.Controllers
     public class ProviderProfilesController : ControllerBase
     {
         private readonly DataContext _context;
+        private const string UserIdKey = "idUsuario";
 
         public ProviderProfilesController(DataContext context)
         {
@@ -65,7 +66,7 @@ namespace GruYaApi.Controllers
             [FromBody] UpdateProviderProfileRequest request
         )
         {
-            var userId = (int)HttpContext.Items["idUsuario"]!;
+            var userId = (int)HttpContext.Items[UserIdKey!];
 
             var existente = await _context
                 .ProviderProfiles.Include(pp => pp.User)

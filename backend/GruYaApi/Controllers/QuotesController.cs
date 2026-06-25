@@ -20,6 +20,7 @@ namespace GruYaApi.Controllers
         private readonly DataContext _context;
         private readonly INotificationService? _notificationService;
         private static readonly TimeSpan ExpirationWindow = TimeSpan.FromHours(1);
+        private const string UserIdKey = "idUsuario";
 
         public QuotesController(DataContext context, INotificationService? notificationService)
         {
@@ -94,7 +95,7 @@ namespace GruYaApi.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateQuote([FromBody] CreateQuoteRequest request)
         {
-            var userId = (int)HttpContext.Items["idUsuario"]!;
+            var userId = (int)HttpContext.Items[UserIdKey]!;
 
             var profileIds = await GetProviderProfileIdsAsync(userId);
             if (profileIds.Count == 0)
@@ -179,7 +180,7 @@ namespace GruYaApi.Controllers
         [HttpGet("mine")]
         public async Task<IActionResult> GetMyQuotes([FromQuery] List<QuoteStatus>? status)
         {
-            var userId = (int)HttpContext.Items["idUsuario"]!;
+            var userId = (int)HttpContext.Items[UserIdKey]!;
             var profileIds = await GetProviderProfileIdsAsync(userId);
 
             var baseQuery = _context.Quotes.Where(q => profileIds.Contains(q.ProviderProfileId));
@@ -198,7 +199,7 @@ namespace GruYaApi.Controllers
         [HttpGet("by-assistance/{assistanceId}")]
         public async Task<IActionResult> GetQuotesByAssistance(int assistanceId)
         {
-            var userId = (int)HttpContext.Items["idUsuario"]!;
+            var userId = (int)HttpContext.Items[UserIdKey]!;
 
             var assistance = await _context
                 .Assistances.Include(a => a.Client)
@@ -222,7 +223,7 @@ namespace GruYaApi.Controllers
         [HttpGet("requests-for-me")]
         public async Task<IActionResult> GetRequestsForMe()
         {
-            var userId = (int)HttpContext.Items["idUsuario"]!;
+            var userId = (int)HttpContext.Items[UserIdKey]!;
             var profileIds = await GetProviderProfileIdsAsync(userId);
 
             if (profileIds.Count == 0)
@@ -285,7 +286,7 @@ namespace GruYaApi.Controllers
         [HttpPut("{quoteId}/accept")]
         public async Task<IActionResult> AcceptQuote(int quoteId)
         {
-            var userId = (int)HttpContext.Items["idUsuario"]!;
+            var userId = (int)HttpContext.Items[UserIdKey]!;
 
             var quote = await _context
                 .Quotes.Include(q => q.Assistance)
@@ -388,7 +389,7 @@ namespace GruYaApi.Controllers
         [HttpPut("{quoteId}/reject")]
         public async Task<IActionResult> RejectQuote(int quoteId)
         {
-            var userId = (int)HttpContext.Items["idUsuario"]!;
+            var userId = (int)HttpContext.Items[UserIdKey]!;
 
             var quote = await _context
                 .Quotes.Include(q => q.Assistance)
@@ -451,7 +452,7 @@ namespace GruYaApi.Controllers
         [HttpPut("{quoteId}/cancel")]
         public async Task<IActionResult> CancelQuote(int quoteId)
         {
-            var userId = (int)HttpContext.Items["idUsuario"]!;
+            var userId = (int)HttpContext.Items[UserIdKey]!;
 
             var quote = await _context
                 .Quotes.Include(q => q.ProviderProfile)
