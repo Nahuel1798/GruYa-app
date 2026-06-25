@@ -313,6 +313,92 @@ namespace GruYaApi.Controllers
             return Ok(response);
         }
 
+        [HttpPost("provider-location")]
+        public async Task<IActionResult> UpdateProviderLocation([FromBody] Location location)
+        {
+            var userId = (int)HttpContext.Items["idUsuario"]!;
+
+            var providerProfile = await _context.ProviderProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
+
+            if (providerProfile == null)
+                return NotFound(new { Message = "Perfil de proveedor no encontrado" });
+
+            providerProfile.CurrentLocation ??= new Location();
+            providerProfile.CurrentLocation.Latitude = location.Latitude;
+            providerProfile.CurrentLocation.Longitude = location.Longitude;
+            providerProfile.LastLocationUpdate = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                Message = "Ubicación actualizada",
+                Latitude = providerProfile.CurrentLocation?.Latitude,
+                Longitude = providerProfile.CurrentLocation?.Longitude,
+                LastLocationUpdate = providerProfile.LastLocationUpdate,
+            });
+        }
+
+        [HttpGet("{id}/route")]
+        public async Task<IActionResult> GetAssistanceRoute(int id)
+        {
+            var userId = (int)HttpContext.Items["idUsuario"]!;
+
+            var assistance = await _context
+                .Assistances.Include(a => a.Origin)
+                .Include(a => a.Destination)
+                .Include(a => a.Provider)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (assistance == null)
+                return NotFound(new { Message = "Asistencia no encontrada" });
+
+            var isClient = assistance.ClientId == userId;
+            var isProvider = assistance.Provider != null && assistance.Provider.Id == userId;
+
+            if (!isClient && !isProvider)
+                return Forbid();
+
+            var providerProfile = assistance.Provider == null
+                ? null
+                : await _context.ProviderProfiles.FirstOrDefaultAsync(pp => pp.UserId == assistance.Provider.Id);
+
+            if (providerProfile == null || providerProfile.CurrentLocation == null)
+                return BadRequest(new { Message = "El proveedor aún no tiene una ubicación actual disponible" });
+
+            var providerToOrigin = await _osrmService.GetRouteInfoAsync(
+                providerProfile.CurrentLocation.Latitude,
+                providerProfile.CurrentLocation.Longitude,
+                assistance.Origin.Latitude,
+                assistance.Origin.Longitude
+            );
+
+            var originToDestination = await _osrmService.GetRouteInfoAsync(
+                assistance.Origin.Latitude,
+                assistance.Origin.Longitude,
+                assistance.Destination.Latitude,
+                assistance.Destination.Longitude
+            );
+
+            var response = new AssistanceRouteResponse
+            {
+                ProviderToOrigin = new RouteLegResponse
+                {
+                    DistanceKm = providerToOrigin.DistanceKm,
+                    EtaMinutes = providerToOrigin.EtaMinutes,
+                    GeometryJson = providerToOrigin.GeometryJson,
+                },
+                OriginToDestination = new RouteLegResponse
+                {
+                    DistanceKm = originToDestination.DistanceKm,
+                    EtaMinutes = originToDestination.EtaMinutes,
+                    GeometryJson = originToDestination.GeometryJson,
+                },
+            };
+
+            return Ok(response);
+        }
+
         // GET: api/assistances/{id}
         // Obtiene los detalles de una solicitud de auxilio
         [HttpGet("{id}")]

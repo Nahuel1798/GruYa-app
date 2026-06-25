@@ -27,9 +27,7 @@ namespace GruYaApi.Models
         public Location Location { get; set; } = null!;
 
         // GPS actual
-        public double? CurrentLatitude { get; set; }
-
-        public double? CurrentLongitude { get; set; }
+        public Location? CurrentLocation { get; set; }
 
         public DateTime? LastLocationUpdate { get; set; }
 
