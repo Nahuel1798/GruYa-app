@@ -17,5 +17,8 @@ namespace GruYaApi.DTOs.Requests
 
         [Required]
         public Location Location { get; set; } = null!;
+
+        [Required]
+        public Location CurrentLocation { get; set; } = null!;
     }
 }
