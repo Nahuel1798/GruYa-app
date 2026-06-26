@@ -20,5 +20,7 @@ namespace GruYaApi.DTOs.Requests
         public string? Phone { get; set; }
 
         public Role Role { get; set; }
+
+        public String? FcmToken { get; set; }
     }
 }

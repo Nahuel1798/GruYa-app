@@ -67,6 +67,12 @@ namespace GruYaApi.Controllers
 
             var token = _jwtTokenService.GenerateToken(user);
 
+            if (!string.IsNullOrWhiteSpace(request.FcmToken))
+            {
+                user.FcmToken = request.FcmToken;
+                await _context.SaveChangesAsync();
+            }
+
             return Ok(new AuthResponse { Token = token, User = user.Adapt<UserResponse>() });
         }
 
