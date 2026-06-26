@@ -276,18 +276,21 @@ namespace GruYaApi.Controllers
                 return Forbid();
 
             // Verificar que la asistencia está en estado válido para iniciar
-            if (assistance.Status == AssistanceStatus.Completado || assistance.Status == AssistanceStatus.Cancelado)
+            if (
+                assistance.Status == AssistanceStatus.Completado
+                || assistance.Status == AssistanceStatus.Cancelado
+            )
                 return Conflict(new { Message = "La asistencia ya ha finalizado" });
 
             if (assistance.Status == AssistanceStatus.EnProceso)
                 return Conflict(new { Message = "El viaje ya ha sido iniciado" });
 
-            // Cambiar estado a EnProceso
+            // Cambiar estado a EnProceso y guardar tracking session
             assistance.Status = AssistanceStatus.EnProceso;
+            assistance.TrackingSessionId = $"assistance-{assistance.Id}";
             await _context.SaveChangesAsync();
 
-            // Session ID for SignalR location tracking
-            var trackingSessionId = $"assistance-{assistance.Id}";
+            var trackingSessionId = assistance.TrackingSessionId;
 
             // Notificar al cliente que el proveedor ha iniciado el viaje
             if (_notificationService is not null)
@@ -302,41 +305,16 @@ namespace GruYaApi.Controllers
                         ["assistanceId"] = assistance.Id.ToString(),
                         ["providerId"] = assistance.Provider!.Id.ToString(),
                         ["trackingSessionId"] = trackingSessionId,
-                    });
+                    }
+                );
             }
 
             var response = new TripStartedResponse
             {
                 IdAssistance = assistance.Id,
-                TrackingSessionId = trackingSessionId
+                TrackingSessionId = trackingSessionId,
             };
             return Ok(response);
-        }
-
-        [HttpPost("provider-location")]
-        public async Task<IActionResult> UpdateProviderLocation([FromBody] Location location)
-        {
-            var userId = (int)HttpContext.Items["idUsuario"]!;
-
-            var providerProfile = await _context.ProviderProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
-
-            if (providerProfile == null)
-                return NotFound(new { Message = "Perfil de proveedor no encontrado" });
-
-            providerProfile.CurrentLocation ??= new Location();
-            providerProfile.CurrentLocation.Latitude = location.Latitude;
-            providerProfile.CurrentLocation.Longitude = location.Longitude;
-            providerProfile.LastLocationUpdate = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                Message = "Ubicación actualizada",
-                Latitude = providerProfile.CurrentLocation?.Latitude,
-                Longitude = providerProfile.CurrentLocation?.Longitude,
-                LastLocationUpdate = providerProfile.LastLocationUpdate,
-            });
         }
 
         [HttpGet("{id}/route")]
@@ -359,12 +337,17 @@ namespace GruYaApi.Controllers
             if (!isClient && !isProvider)
                 return Forbid();
 
-            var providerProfile = assistance.Provider == null
-                ? null
-                : await _context.ProviderProfiles.FirstOrDefaultAsync(pp => pp.UserId == assistance.Provider.Id);
+            var providerProfile =
+                assistance.Provider == null
+                    ? null
+                    : await _context.ProviderProfiles.FirstOrDefaultAsync(pp =>
+                        pp.UserId == assistance.Provider.Id
+                    );
 
             if (providerProfile == null || providerProfile.CurrentLocation == null)
-                return BadRequest(new { Message = "El proveedor aún no tiene una ubicación actual disponible" });
+                return BadRequest(
+                    new { Message = "El proveedor aún no tiene una ubicación actual disponible" }
+                );
 
             var providerToOrigin = await _osrmService.GetRouteInfoAsync(
                 providerProfile.CurrentLocation.Latitude,

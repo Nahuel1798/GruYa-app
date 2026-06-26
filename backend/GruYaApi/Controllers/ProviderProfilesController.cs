@@ -137,5 +137,31 @@ namespace GruYaApi.Controllers
 
             return Ok(profile);
         }
+
+        [HttpPatch("location")]
+        public async Task<IActionResult> UpdateProviderLocation([FromBody] Location location)
+        {
+            var userId = (int)HttpContext.Items[UserIdKey]!;
+
+            var providerProfile = await _context.ProviderProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
+
+            if (providerProfile == null)
+                return NotFound(new { Message = "Perfil de proveedor no encontrado" });
+
+            providerProfile.CurrentLocation ??= new Location();
+            providerProfile.CurrentLocation.Latitude = location.Latitude;
+            providerProfile.CurrentLocation.Longitude = location.Longitude;
+            providerProfile.LastLocationUpdate = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                Message = "Ubicación actualizada",
+                Latitude = providerProfile.CurrentLocation?.Latitude,
+                Longitude = providerProfile.CurrentLocation?.Longitude,
+                LastLocationUpdate = providerProfile.LastLocationUpdate,
+            });
+        }
     }
 }

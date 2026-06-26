@@ -25,5 +25,11 @@ namespace GruYaApi.Models
         public double? DistanceKm { get; set; }
         public double? EtaMinutes { get; set; }
         public string? RouteGeometry { get; set; }
+
+        /// <summary>
+        /// Session ID for SignalR location tracking (format: "assistance-{id}").
+        /// Set when the provider starts the trip.
+        /// </summary>
+        public string? TrackingSessionId { get; set; }
     }
 }
