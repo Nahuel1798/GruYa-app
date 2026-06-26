@@ -1,8 +1,6 @@
-using GruYaApi.Data;
 using GruYaApi.Models;
 using GruYaApi.Service;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
 
 namespace GruYaApi.Hubs
 {
@@ -10,13 +8,11 @@ namespace GruYaApi.Hubs
     {
         private readonly ISessionService _sessions;
         private readonly ILogger<LocationHub> _logger;
-        private readonly DataContext _context;
 
-        public LocationHub(ISessionService sessions, ILogger<LocationHub> logger, DataContext context)
+        public LocationHub(ISessionService sessions, ILogger<LocationHub> logger)
         {
             _sessions = sessions;
             _logger = logger;
-            _context = context;
         }
 
         public override async Task OnConnectedAsync()
@@ -73,29 +69,6 @@ namespace GruYaApi.Hubs
             _logger.LogInformation(
                 "UpdateLocation: ConnectionId={ConnectionId}, SessionId={SessionId}, Location=({Lat},{Lng})",
                 Context.ConnectionId, sessionId, location.Latitude, location.Longitude);
-
-            var sessionParts = sessionId.Split('-', 2);
-            if (sessionParts.Length == 2 && int.TryParse(sessionParts[1], out var assistanceId))
-            {
-                var assistance = await _context.Assistances
-                    .Include(a => a.Provider)
-                    .FirstOrDefaultAsync(a => a.Id == assistanceId);
-
-                if (assistance?.Provider != null)
-                {
-                    var providerProfile = await _context.ProviderProfiles
-                        .FirstOrDefaultAsync(p => p.UserId == assistance.Provider.Id);
-
-                    if (providerProfile != null)
-                    {
-                        providerProfile.CurrentLocation ??= new Location();
-                        providerProfile.CurrentLocation.Latitude = location.Latitude;
-                        providerProfile.CurrentLocation.Longitude = location.Longitude;
-                        providerProfile.LastLocationUpdate = DateTime.UtcNow;
-                        await _context.SaveChangesAsync();
-                    }
-                }
-            }
 
             await Clients.OthersInGroup(sessionId).LocationUpdated(location);
         }
