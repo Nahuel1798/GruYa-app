@@ -42,7 +42,10 @@ namespace GruYaApi.Service
                 iterationCount: 100000,
                 numBytesRequested: 256 / 8));
 
-            return hash == hashedInput;
+            return CryptographicOperations.FixedTimeEquals(
+                Convert.FromBase64String(hash),
+                Convert.FromBase64String(hashedInput)
+            );
         }
     }
 }

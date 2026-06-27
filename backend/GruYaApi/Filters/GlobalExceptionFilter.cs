@@ -31,7 +31,7 @@ namespace GruYaApi.Filters
                 {
                     Title = "Entrada duplicada",
                     Detail = "Ya existe una entidad con esos datos",
-                    Status = 500,
+                    Status = 409,
                     Type = "",
                 };
                 context.Result = new ObjectResult(respuesta) { StatusCode = respuesta.Status };

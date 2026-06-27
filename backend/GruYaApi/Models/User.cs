@@ -19,7 +19,7 @@ namespace GruYaApi.Models
 
         public string? AvatarUrl { get; set; }
 
-        public string Phone { get; set; } = null!;
+        public string? Phone { get; set; }
 
         public string? FcmToken { get; set; }
     }

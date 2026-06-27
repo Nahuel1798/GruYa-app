@@ -39,7 +39,10 @@ namespace GruYaApi.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterRequest request)
         {
-            var existe = _context.Users.Any(u => u.Email == request.Email);
+            if (request.Role != Role.User && request.Role != Role.Provider)
+                return BadRequest(new { message = "Rol inválido. Solo se permiten los roles User y Provider" });
+
+            var existe = await _context.Users.AnyAsync(u => u.Email == request.Email);
             if (existe)
                 return BadRequest(new { message = "Email esta registrado" });
 

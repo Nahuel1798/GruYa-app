@@ -17,6 +17,8 @@ namespace GruYaApi.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
+
             modelBuilder.Entity<Assistance>().OwnsOne(a => a.Origin);
             modelBuilder.Entity<Assistance>().OwnsOne(a => a.Destination);
             modelBuilder.Entity<ProviderProfile>().OwnsOne(p => p.Location);
