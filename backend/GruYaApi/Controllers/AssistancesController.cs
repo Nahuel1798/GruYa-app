@@ -80,7 +80,7 @@ namespace GruYaApi.Controllers
                 return NotFound(new { Message = "Cliente no encontrado" });
 
             // Verificar si el cliente ya tiene una solicitud activa
-            var activeStatuses = new[] { AssistanceStatus.Pendiente, AssistanceStatus.EnProceso };
+            var activeStatuses = new[] { AssistanceStatus.Pendiente, AssistanceStatus.Aceptada, AssistanceStatus.EnCaminoAlCliente, AssistanceStatus.EnOrigen, AssistanceStatus.EnCaminoAlDestino };
 
             var hasActiveAssistance = await _context.Assistances.AnyAsync(a =>
                 a.ClientId == client.Id && activeStatuses.Contains(a.Status)
@@ -256,7 +256,7 @@ namespace GruYaApi.Controllers
         }
 
         // PUT: api/assistances/{id}/start-trip
-        // Permite al proveedor asignado iniciar el viaje (cambia estado a EnProceso y notifica al cliente)
+        // Permite al proveedor asignado iniciar el viaje (transición Aceptada → EnCaminoAlCliente)
         [HttpPut("{id}/start-trip")]
         public async Task<IActionResult> StartTrip(int id)
         {
@@ -275,18 +275,19 @@ namespace GruYaApi.Controllers
             if (assistance.Provider == null || assistance.Provider.Id != userId)
                 return Forbid();
 
-            // Verificar que la asistencia está en estado válido para iniciar
+            // Verificar que la asistencia no está en estado terminal
             if (
                 assistance.Status == AssistanceStatus.Completado
                 || assistance.Status == AssistanceStatus.Cancelado
             )
                 return Conflict(new { Message = "La asistencia ya ha finalizado" });
 
-            if (assistance.Status == AssistanceStatus.EnProceso)
-                return Conflict(new { Message = "El viaje ya ha sido iniciado" });
+            // Solo se puede iniciar el viaje desde Aceptada
+            if (assistance.Status != AssistanceStatus.Aceptada)
+                return Conflict(new { Message = "El viaje no puede ser iniciado. La asistencia no está aceptada" });
 
-            // Cambiar estado a EnProceso y guardar tracking session
-            assistance.Status = AssistanceStatus.EnProceso;
+            // Transición Aceptada → EnCaminoAlCliente y guardar tracking session
+            assistance.Status = AssistanceStatus.EnCaminoAlCliente;
             assistance.TrackingSessionId = $"assistance-{assistance.Id}";
             await _context.SaveChangesAsync();
 
@@ -315,6 +316,151 @@ namespace GruYaApi.Controllers
                 TrackingSessionId = trackingSessionId,
             };
             return Ok(response);
+        }
+
+        // PUT: api/assistances/{id}/arrive-at-origin
+        // Transición EnCaminoAlCliente → EnOrigen
+        [HttpPut("{id}/arrive-at-origin")]
+        public async Task<IActionResult> ArriveAtOrigin(int id)
+        {
+            var userId = (int)HttpContext.Items["idUsuario"]!;
+
+            var assistance = await _context
+                .Assistances.Include(a => a.Client)
+                .Include(a => a.Provider)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (assistance == null)
+                return NotFound(new { Message = "Asistencia no encontrada" });
+
+            // Verificar que el usuario autenticado es el proveedor asignado
+            if (assistance.Provider == null || assistance.Provider.Id != userId)
+                return Forbid();
+
+            // Verificar que la asistencia no está en estado terminal
+            if (assistance.Status == AssistanceStatus.Completado || assistance.Status == AssistanceStatus.Cancelado)
+                return Conflict(new { Message = "La asistencia ya ha finalizado" });
+
+            if (assistance.Status != AssistanceStatus.EnCaminoAlCliente)
+                return Conflict(new { Message = "La asistencia no está en camino al cliente" });
+
+            assistance.Status = AssistanceStatus.EnOrigen;
+            await _context.SaveChangesAsync();
+
+            // Notificar al cliente
+            if (_notificationService is not null)
+            {
+                await _notificationService.SendToUserAsync(
+                    assistance.ClientId,
+                    "El proveedor llegó a tu ubicación",
+                    "El proveedor está en tu ubicación",
+                    new Dictionary<string, string>
+                    {
+                        ["type"] = "provider.arrived",
+                        ["assistanceId"] = assistance.Id.ToString(),
+                        ["providerId"] = assistance.Provider.Id.ToString(),
+                    }
+                );
+            }
+
+            return Ok(new { Message = "Llegada al origen registrada" });
+        }
+
+        // PUT: api/assistances/{id}/head-to-destination
+        // Transición EnOrigen → EnCaminoAlDestino
+        [HttpPut("{id}/head-to-destination")]
+        public async Task<IActionResult> HeadToDestination(int id)
+        {
+            var userId = (int)HttpContext.Items["idUsuario"]!;
+
+            var assistance = await _context
+                .Assistances.Include(a => a.Client)
+                .Include(a => a.Provider)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (assistance == null)
+                return NotFound(new { Message = "Asistencia no encontrada" });
+
+            // Verificar que el usuario autenticado es el proveedor asignado
+            if (assistance.Provider == null || assistance.Provider.Id != userId)
+                return Forbid();
+
+            // Verificar que la asistencia no está en estado terminal
+            if (assistance.Status == AssistanceStatus.Completado || assistance.Status == AssistanceStatus.Cancelado)
+                return Conflict(new { Message = "La asistencia ya ha finalizado" });
+
+            if (assistance.Status != AssistanceStatus.EnOrigen)
+                return Conflict(new { Message = "La asistencia no está en el origen" });
+
+            assistance.Status = AssistanceStatus.EnCaminoAlDestino;
+            await _context.SaveChangesAsync();
+
+            // Notificar al cliente
+            if (_notificationService is not null)
+            {
+                await _notificationService.SendToUserAsync(
+                    assistance.ClientId,
+                    "El proveedor se dirige hacia tu destino",
+                    "El proveedor está en camino a tu destino",
+                    new Dictionary<string, string>
+                    {
+                        ["type"] = "provider.heading_to_destination",
+                        ["assistanceId"] = assistance.Id.ToString(),
+                        ["providerId"] = assistance.Provider.Id.ToString(),
+                    }
+                );
+            }
+
+            return Ok(new { Message = "Dirección al destino registrada" });
+        }
+
+        // PUT: api/assistances/{id}/complete
+        // Transición EnCaminoAlDestino → Completado
+        [HttpPut("{id}/complete")]
+        public async Task<IActionResult> CompleteService(int id)
+        {
+            var userId = (int)HttpContext.Items["idUsuario"]!;
+
+            var assistance = await _context
+                .Assistances.Include(a => a.Client)
+                .Include(a => a.Provider)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (assistance == null)
+                return NotFound(new { Message = "Asistencia no encontrada" });
+
+            // Verificar que el usuario autenticado es el proveedor asignado
+            if (assistance.Provider == null || assistance.Provider.Id != userId)
+                return Forbid();
+
+            // Verificar que la asistencia no está en estado terminal
+            if (assistance.Status == AssistanceStatus.Completado || assistance.Status == AssistanceStatus.Cancelado)
+                return Conflict(new { Message = "La asistencia ya ha finalizado" });
+
+            if (assistance.Status != AssistanceStatus.EnCaminoAlDestino)
+                return Conflict(new { Message = "La asistencia no está en camino al destino" });
+
+            assistance.Status = AssistanceStatus.Completado;
+            assistance.TrackingSessionId = null;
+            await _context.SaveChangesAsync();
+
+            // Notificar al cliente
+            if (_notificationService is not null)
+            {
+                await _notificationService.SendToUserAsync(
+                    assistance.ClientId,
+                    "El servicio fue completado",
+                    "Tu servicio de asistencia ha finalizado",
+                    new Dictionary<string, string>
+                    {
+                        ["type"] = "provider.service_completed",
+                        ["assistanceId"] = assistance.Id.ToString(),
+                        ["providerId"] = assistance.Provider.Id.ToString(),
+                    }
+                );
+            }
+
+            return Ok(new { Message = "Servicio completado exitosamente" });
         }
 
         [HttpGet("{id}/route")]

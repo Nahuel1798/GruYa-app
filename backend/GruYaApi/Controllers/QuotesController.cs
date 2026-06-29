@@ -328,6 +328,7 @@ namespace GruYaApi.Controllers
             quote.Status = QuoteStatus.Aceptada;
             quote.UpdatedAt = DateTime.UtcNow;
             quote.Assistance.Provider = quote.ProviderProfile.User;
+            quote.Assistance.Status = AssistanceStatus.Aceptada;
 
             // Auto-reject other pending quotes for the same assistance
             var otherPending = await _context
