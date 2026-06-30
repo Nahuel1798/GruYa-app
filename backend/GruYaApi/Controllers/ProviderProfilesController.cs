@@ -143,7 +143,9 @@ namespace GruYaApi.Controllers
         {
             var userId = (int)HttpContext.Items[UserIdKey]!;
 
-            var providerProfile = await _context.ProviderProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
+            var providerProfile = await _context.ProviderProfiles.FirstOrDefaultAsync(p =>
+                p.UserId == userId
+            );
 
             if (providerProfile == null)
                 return NotFound(new { Message = "Perfil de proveedor no encontrado" });
@@ -155,13 +157,36 @@ namespace GruYaApi.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(new
-            {
-                Message = "Ubicación actualizada",
-                Latitude = providerProfile.CurrentLocation?.Latitude,
-                Longitude = providerProfile.CurrentLocation?.Longitude,
-                LastLocationUpdate = providerProfile.LastLocationUpdate,
-            });
+            return Ok(
+                new
+                {
+                    Message = "Ubicación actualizada",
+                    Latitude = providerProfile.CurrentLocation?.Latitude,
+                    Longitude = providerProfile.CurrentLocation?.Longitude,
+                    LastLocationUpdate = providerProfile.LastLocationUpdate,
+                }
+            );
+        }
+
+        [HttpPatch("available")]
+        public async Task<IActionResult> UpdateProviderAvailability(
+            [FromBody] UpdateProviderAvailabilityRequest request
+        )
+        {
+            var userId = (int)HttpContext.Items[UserIdKey]!;
+
+            var providerProfile = await _context.ProviderProfiles.FirstOrDefaultAsync(p =>
+                p.UserId == userId
+            );
+
+            if (providerProfile == null)
+                return NotFound(new { Message = "Perfil de proveedor no encontrado" });
+
+            providerProfile.IsAvailable = request.IsAvailable;
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
         }
     }
 }
