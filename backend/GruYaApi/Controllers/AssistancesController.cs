@@ -174,14 +174,15 @@ namespace GruYaApi.Controllers
                     {
                         await _notificationService.SendToUserAsync(
                             provider.UserId,
-                            "Te han solicitado un servicio",
-                            $"{request.ServiceType} - {request.IssueType}",
+                            null, null,
                             new Dictionary<string, string>
                             {
                                 ["type"] = "directed_assistance",
                                 ["assistanceId"] = assistance.Id.ToString(),
                                 ["serviceType"] = request.ServiceType.ToString(),
                                 ["issueType"] = request.IssueType.ToString(),
+                                ["title"] = "Te han solicitado un servicio",
+                                ["body"] = $"{request.ServiceType} - {request.IssueType}",
                             }
                         );
                     }
@@ -211,8 +212,7 @@ namespace GruYaApi.Controllers
                     {
                         await _notificationService.SendToMultipleAsync(
                             matchingTokens,
-                            "Nueva solicitud de auxilio cerca",
-                            $"Tipo: {request.ServiceType}",
+                            null, null,
                             new Dictionary<string, string>
                             {
                                 ["type"] = "new_assistance",
@@ -221,6 +221,8 @@ namespace GruYaApi.Controllers
                                 ["issueType"] = request.IssueType.ToString(),
                                 ["originLat"] = request.Origin.Latitude.ToString(),
                                 ["originLon"] = request.Origin.Longitude.ToString(),
+                                ["title"] = "Nueva solicitud de auxilio cerca",
+                                ["body"] = $"Tipo: {request.ServiceType}",
                             }
                         );
                     }
@@ -298,14 +300,15 @@ namespace GruYaApi.Controllers
             {
                 await _notificationService.SendToUserAsync(
                     assistance.ClientId,
-                    "Tu proveedor ha iniciado el viaje",
-                    "El proveedor está en camino hacia tu ubicación",
+                    null, null,
                     new Dictionary<string, string>
                     {
                         ["type"] = "trip_started",
                         ["assistanceId"] = assistance.Id.ToString(),
                         ["providerId"] = assistance.Provider!.Id.ToString(),
                         ["trackingSessionId"] = trackingSessionId,
+                        ["title"] = "Tu proveedor ha iniciado el viaje",
+                        ["body"] = "El proveedor está en camino hacia tu ubicación",
                     }
                 );
             }
@@ -352,13 +355,14 @@ namespace GruYaApi.Controllers
             {
                 await _notificationService.SendToUserAsync(
                     assistance.ClientId,
-                    "El proveedor llegó a tu ubicación",
-                    "El proveedor está en tu ubicación",
+                    null, null,
                     new Dictionary<string, string>
                     {
                         ["type"] = "provider.arrived",
                         ["assistanceId"] = assistance.Id.ToString(),
                         ["providerId"] = assistance.Provider.Id.ToString(),
+                        ["title"] = "El proveedor llegó a tu ubicación",
+                        ["body"] = "El proveedor está en tu ubicación",
                     }
                 );
             }
@@ -400,13 +404,14 @@ namespace GruYaApi.Controllers
             {
                 await _notificationService.SendToUserAsync(
                     assistance.ClientId,
-                    "El proveedor se dirige hacia tu destino",
-                    "El proveedor está en camino a tu destino",
+                    null, null,
                     new Dictionary<string, string>
                     {
                         ["type"] = "provider.heading_to_destination",
                         ["assistanceId"] = assistance.Id.ToString(),
                         ["providerId"] = assistance.Provider.Id.ToString(),
+                        ["title"] = "El proveedor se dirige hacia tu destino",
+                        ["body"] = "El proveedor está en camino a tu destino",
                     }
                 );
             }
@@ -449,13 +454,14 @@ namespace GruYaApi.Controllers
             {
                 await _notificationService.SendToUserAsync(
                     assistance.ClientId,
-                    "El servicio fue completado",
-                    "Tu servicio de asistencia ha finalizado",
+                    null, null,
                     new Dictionary<string, string>
                     {
                         ["type"] = "provider.service_completed",
                         ["assistanceId"] = assistance.Id.ToString(),
                         ["providerId"] = assistance.Provider.Id.ToString(),
+                        ["title"] = "El servicio fue completado",
+                        ["body"] = "Tu servicio de asistencia ha finalizado",
                     }
                 );
             }

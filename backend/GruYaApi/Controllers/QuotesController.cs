@@ -160,8 +160,7 @@ namespace GruYaApi.Controllers
             {
                 await _notificationService.SendToUserAsync(
                     assistance.ClientId,
-                    "Recibiste una cotización",
-                    $"{response.ProviderName} cotizó ${request.Price}",
+                    null, null,
                     new Dictionary<string, string>
                     {
                         ["type"] = "new_quote",
@@ -169,6 +168,8 @@ namespace GruYaApi.Controllers
                         ["quoteId"] = quote.Id.ToString(),
                         ["providerName"] = response.ProviderName,
                         ["price"] = request.Price.ToString(),
+                        ["title"] = "Recibiste una cotización",
+                        ["body"] = $"{response.ProviderName} cotizó ${request.Price}",
                     }
                 );
             }
@@ -356,25 +357,27 @@ namespace GruYaApi.Controllers
                 // Notify winning provider
                 await _notificationService.SendToUserAsync(
                     quote.ProviderProfile.UserId,
-                    "¡Servicio asignado!",
-                    "Tu cotización fue aceptada",
+                    null, null,
                     new Dictionary<string, string>
                     {
                         ["type"] = "quote_accepted_provider",
                         ["assistanceId"] = quote.AssistanceId.ToString(),
                         ["providerProfileId"] = quote.ProviderProfileId.ToString(),
+                        ["title"] = "¡Servicio asignado!",
+                        ["body"] = "Tu cotización fue aceptada",
                     }
                 );
 
                 // Notify client (confirmation)
                 await _notificationService.SendToUserAsync(
                     quote.Assistance.Client.Id,
-                    "Tu solicitud está siendo atendida",
-                    $"{companyName} está en camino",
+                    null, null,
                     new Dictionary<string, string>
                     {
                         ["type"] = "quote_accepted_client",
                         ["assistanceId"] = quote.AssistanceId.ToString(),
+                        ["title"] = "Tu solicitud está siendo atendida",
+                        ["body"] = $"{companyName} está en camino",
                     }
                 );
             }
@@ -432,12 +435,13 @@ namespace GruYaApi.Controllers
             {
                 await _notificationService.SendToUserAsync(
                     quote.ProviderProfile.UserId,
-                    "Cotización rechazada",
-                    "Tu cotización fue rechazada",
+                    null, null,
                     new Dictionary<string, string>
                     {
                         ["type"] = "quote_rejected",
                         ["assistanceId"] = quote.AssistanceId.ToString(),
+                        ["title"] = "Cotización rechazada",
+                        ["body"] = "Tu cotización fue rechazada",
                     }
                 );
             }
