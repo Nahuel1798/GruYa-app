@@ -11,5 +11,6 @@ namespace GruYaApi.DTOs.Responses
     {
         public RouteLegResponse ProviderToOrigin { get; set; } = new();
         public RouteLegResponse OriginToDestination { get; set; } = new();
+        public RouteLegResponse? ProviderToDestination { get; set; }
     }
 }

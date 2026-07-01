@@ -4,6 +4,7 @@ namespace GruYaApi.Models
     {
         Pendiente,
         Aceptada,
+        Completado,
         Rechazada,
         Cancelada,
         Expirada

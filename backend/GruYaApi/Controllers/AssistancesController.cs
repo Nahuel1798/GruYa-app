@@ -447,6 +447,17 @@ namespace GruYaApi.Controllers
 
             assistance.Status = AssistanceStatus.Completado;
             assistance.TrackingSessionId = null;
+
+            var acceptedQuote = await _context.Quotes.FirstOrDefaultAsync(q =>
+                q.AssistanceId == assistance.Id && q.Status == QuoteStatus.Aceptada
+            );
+
+            if (acceptedQuote != null)
+            {
+                acceptedQuote.Status = QuoteStatus.Completado;
+                acceptedQuote.UpdatedAt = DateTime.UtcNow;
+            }
+
             await _context.SaveChangesAsync();
 
             // Notificar al cliente
@@ -496,17 +507,46 @@ namespace GruYaApi.Controllers
                         pp.UserId == assistance.Provider.Id
                     );
 
-            if (providerProfile == null || providerProfile.CurrentLocation == null)
-                return BadRequest(
-                    new { Message = "El proveedor aún no tiene una ubicación actual disponible" }
-                );
+            var providerToOrigin = new RouteLegResponse();
+            RouteLegResponse? providerToDestination = null;
 
-            var providerToOrigin = await _osrmService.GetRouteInfoAsync(
-                providerProfile.CurrentLocation.Latitude,
-                providerProfile.CurrentLocation.Longitude,
-                assistance.Origin.Latitude,
-                assistance.Origin.Longitude
-            );
+            if (providerProfile?.CurrentLocation != null)
+            {
+                try
+                {
+                    var providerToOriginRoute = await _osrmService.GetRouteInfoAsync(
+                        providerProfile.CurrentLocation.Latitude,
+                        providerProfile.CurrentLocation.Longitude,
+                        assistance.Origin.Latitude,
+                        assistance.Origin.Longitude
+                    );
+
+                    providerToOrigin = new RouteLegResponse
+                    {
+                        DistanceKm = providerToOriginRoute.DistanceKm,
+                        EtaMinutes = providerToOriginRoute.EtaMinutes,
+                        GeometryJson = providerToOriginRoute.GeometryJson,
+                    };
+
+                    var providerToDestinationRoute = await _osrmService.GetRouteInfoAsync(
+                        providerProfile.CurrentLocation.Latitude,
+                        providerProfile.CurrentLocation.Longitude,
+                        assistance.Destination.Latitude,
+                        assistance.Destination.Longitude
+                    );
+
+                    providerToDestination = new RouteLegResponse
+                    {
+                        DistanceKm = providerToDestinationRoute.DistanceKm,
+                        EtaMinutes = providerToDestinationRoute.EtaMinutes,
+                        GeometryJson = providerToDestinationRoute.GeometryJson,
+                    };
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error calculando rutas para la asistencia {id}: {ex.Message}");
+                }
+            }
 
             var originToDestination = await _osrmService.GetRouteInfoAsync(
                 assistance.Origin.Latitude,
@@ -517,18 +557,14 @@ namespace GruYaApi.Controllers
 
             var response = new AssistanceRouteResponse
             {
-                ProviderToOrigin = new RouteLegResponse
-                {
-                    DistanceKm = providerToOrigin.DistanceKm,
-                    EtaMinutes = providerToOrigin.EtaMinutes,
-                    GeometryJson = providerToOrigin.GeometryJson,
-                },
+                ProviderToOrigin = providerToOrigin,
                 OriginToDestination = new RouteLegResponse
                 {
                     DistanceKm = originToDestination.DistanceKm,
                     EtaMinutes = originToDestination.EtaMinutes,
                     GeometryJson = originToDestination.GeometryJson,
                 },
+                ProviderToDestination = providerToDestination,
             };
 
             return Ok(response);
