@@ -80,7 +80,14 @@ namespace GruYaApi.Controllers
                 return NotFound(new { Message = "Cliente no encontrado" });
 
             // Verificar si el cliente ya tiene una solicitud activa
-            var activeStatuses = new[] { AssistanceStatus.Pendiente, AssistanceStatus.Aceptada, AssistanceStatus.EnCaminoAlCliente, AssistanceStatus.EnOrigen, AssistanceStatus.EnCaminoAlDestino };
+            var activeStatuses = new[]
+            {
+                AssistanceStatus.Pendiente,
+                AssistanceStatus.Aceptada,
+                AssistanceStatus.EnCaminoAlCliente,
+                AssistanceStatus.EnOrigen,
+                AssistanceStatus.EnCaminoAlDestino,
+            };
 
             var hasActiveAssistance = await _context.Assistances.AnyAsync(a =>
                 a.ClientId == client.Id && activeStatuses.Contains(a.Status)
@@ -172,18 +179,11 @@ namespace GruYaApi.Controllers
 
                     if (provider != null)
                     {
-                        await _notificationService.SendToUserAsync(
+                        await _notificationService.NotifyDirectedAssistanceToProviderAsync(
                             provider.UserId,
-                            null, null,
-                            new Dictionary<string, string>
-                            {
-                                ["type"] = "directed_assistance",
-                                ["assistanceId"] = assistance.Id.ToString(),
-                                ["serviceType"] = request.ServiceType.ToString(),
-                                ["issueType"] = request.IssueType.ToString(),
-                                ["title"] = "Te han solicitado un servicio",
-                                ["body"] = $"{request.ServiceType} - {request.IssueType}",
-                            }
+                            assistance.Id,
+                            request.ServiceType.ToString(),
+                            request.IssueType.ToString()
                         );
                     }
                 }
@@ -205,25 +205,16 @@ namespace GruYaApi.Controllers
                             ) <= 20m
                             && !string.IsNullOrWhiteSpace(p.User.FcmToken)
                         )
-                        .Select(p => p.User.FcmToken!)
-                        .ToList();
-
+                        .ToDictionary(p => p.User.Id, p => p.User.FcmToken!);
                     if (matchingTokens.Count > 0)
                     {
-                        await _notificationService.SendToMultipleAsync(
+                        await _notificationService.NotifyNewAssistanceToProvidersAsync(
                             matchingTokens,
-                            null, null,
-                            new Dictionary<string, string>
-                            {
-                                ["type"] = "new_assistance",
-                                ["assistanceId"] = assistance.Id.ToString(),
-                                ["serviceType"] = request.ServiceType.ToString(),
-                                ["issueType"] = request.IssueType.ToString(),
-                                ["originLat"] = request.Origin.Latitude.ToString(),
-                                ["originLon"] = request.Origin.Longitude.ToString(),
-                                ["title"] = "Nueva solicitud de auxilio cerca",
-                                ["body"] = $"Tipo: {request.ServiceType}",
-                            }
+                            assistance.Id,
+                            request.ServiceType.ToString(),
+                            request.IssueType.ToString(),
+                            request.Origin.Latitude,
+                            request.Origin.Longitude
                         );
                     }
                 }
@@ -286,7 +277,12 @@ namespace GruYaApi.Controllers
 
             // Solo se puede iniciar el viaje desde Aceptada
             if (assistance.Status != AssistanceStatus.Aceptada)
-                return Conflict(new { Message = "El viaje no puede ser iniciado. La asistencia no está aceptada" });
+                return Conflict(
+                    new
+                    {
+                        Message = "El viaje no puede ser iniciado. La asistencia no está aceptada",
+                    }
+                );
 
             // Transición Aceptada → EnCaminoAlCliente y guardar tracking session
             assistance.Status = AssistanceStatus.EnCaminoAlCliente;
@@ -298,18 +294,11 @@ namespace GruYaApi.Controllers
             // Notificar al cliente que el proveedor ha iniciado el viaje
             if (_notificationService is not null)
             {
-                await _notificationService.SendToUserAsync(
+                await _notificationService.NotifyTripStartedToClientAsync(
                     assistance.ClientId,
-                    null, null,
-                    new Dictionary<string, string>
-                    {
-                        ["type"] = "trip_started",
-                        ["assistanceId"] = assistance.Id.ToString(),
-                        ["providerId"] = assistance.Provider!.Id.ToString(),
-                        ["trackingSessionId"] = trackingSessionId,
-                        ["title"] = "Tu proveedor ha iniciado el viaje",
-                        ["body"] = "El proveedor está en camino hacia tu ubicación",
-                    }
+                    assistance.Id,
+                    assistance.Provider!.Id,
+                    trackingSessionId
                 );
             }
 
@@ -341,7 +330,10 @@ namespace GruYaApi.Controllers
                 return Forbid();
 
             // Verificar que la asistencia no está en estado terminal
-            if (assistance.Status == AssistanceStatus.Completado || assistance.Status == AssistanceStatus.Cancelado)
+            if (
+                assistance.Status == AssistanceStatus.Completado
+                || assistance.Status == AssistanceStatus.Cancelado
+            )
                 return Conflict(new { Message = "La asistencia ya ha finalizado" });
 
             if (assistance.Status != AssistanceStatus.EnCaminoAlCliente)
@@ -353,17 +345,10 @@ namespace GruYaApi.Controllers
             // Notificar al cliente
             if (_notificationService is not null)
             {
-                await _notificationService.SendToUserAsync(
+                await _notificationService.NotifyProviderArrivedToClientAsync(
                     assistance.ClientId,
-                    null, null,
-                    new Dictionary<string, string>
-                    {
-                        ["type"] = "provider.arrived",
-                        ["assistanceId"] = assistance.Id.ToString(),
-                        ["providerId"] = assistance.Provider.Id.ToString(),
-                        ["title"] = "El proveedor llegó a tu ubicación",
-                        ["body"] = "El proveedor está en tu ubicación",
-                    }
+                    assistance.Id,
+                    assistance.Provider.Id
                 );
             }
 
@@ -390,7 +375,10 @@ namespace GruYaApi.Controllers
                 return Forbid();
 
             // Verificar que la asistencia no está en estado terminal
-            if (assistance.Status == AssistanceStatus.Completado || assistance.Status == AssistanceStatus.Cancelado)
+            if (
+                assistance.Status == AssistanceStatus.Completado
+                || assistance.Status == AssistanceStatus.Cancelado
+            )
                 return Conflict(new { Message = "La asistencia ya ha finalizado" });
 
             if (assistance.Status != AssistanceStatus.EnOrigen)
@@ -402,17 +390,10 @@ namespace GruYaApi.Controllers
             // Notificar al cliente
             if (_notificationService is not null)
             {
-                await _notificationService.SendToUserAsync(
+                await _notificationService.NotifyProviderHeadingToDestinationToClientAsync(
                     assistance.ClientId,
-                    null, null,
-                    new Dictionary<string, string>
-                    {
-                        ["type"] = "provider.heading_to_destination",
-                        ["assistanceId"] = assistance.Id.ToString(),
-                        ["providerId"] = assistance.Provider.Id.ToString(),
-                        ["title"] = "El proveedor se dirige hacia tu destino",
-                        ["body"] = "El proveedor está en camino a tu destino",
-                    }
+                    assistance.Id,
+                    assistance.Provider.Id
                 );
             }
 
@@ -439,7 +420,10 @@ namespace GruYaApi.Controllers
                 return Forbid();
 
             // Verificar que la asistencia no está en estado terminal
-            if (assistance.Status == AssistanceStatus.Completado || assistance.Status == AssistanceStatus.Cancelado)
+            if (
+                assistance.Status == AssistanceStatus.Completado
+                || assistance.Status == AssistanceStatus.Cancelado
+            )
                 return Conflict(new { Message = "La asistencia ya ha finalizado" });
 
             if (assistance.Status != AssistanceStatus.EnCaminoAlDestino)
@@ -463,17 +447,10 @@ namespace GruYaApi.Controllers
             // Notificar al cliente
             if (_notificationService is not null)
             {
-                await _notificationService.SendToUserAsync(
+                await _notificationService.NotifyServiceCompletedToClientAsync(
                     assistance.ClientId,
-                    null, null,
-                    new Dictionary<string, string>
-                    {
-                        ["type"] = "provider.service_completed",
-                        ["assistanceId"] = assistance.Id.ToString(),
-                        ["providerId"] = assistance.Provider.Id.ToString(),
-                        ["title"] = "El servicio fue completado",
-                        ["body"] = "Tu servicio de asistencia ha finalizado",
-                    }
+                    assistance.Id,
+                    assistance.Provider.Id
                 );
             }
 
@@ -544,7 +521,9 @@ namespace GruYaApi.Controllers
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error calculando rutas para la asistencia {id}: {ex.Message}");
+                    Console.WriteLine(
+                        $"Error calculando rutas para la asistencia {id}: {ex.Message}"
+                    );
                 }
             }
 

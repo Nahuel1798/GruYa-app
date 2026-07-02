@@ -14,6 +14,7 @@ namespace GruYaApi.Data
         public DbSet<ProviderProfile> ProviderProfiles { get; set; }
         public DbSet<Vehicle> Vehicles { get; set; }
         public DbSet<Quote> Quotes { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -49,6 +50,22 @@ namespace GruYaApi.Data
                 entity.HasOne(a => a.RequestedProviderProfile)
                     .WithMany()
                     .HasForeignKey(a => a.RequestedProviderProfileId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<Notification>(entity =>
+            {
+                entity.ToTable("Notifications");
+                entity.HasKey(n => n.Id);
+
+                entity.HasOne(n => n.User)
+                    .WithMany()
+                    .HasForeignKey(n => n.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(n => n.Assistance)
+                    .WithMany()
+                    .HasForeignKey(n => n.AssistanceId)
                     .OnDelete(DeleteBehavior.SetNull);
             });
         }
