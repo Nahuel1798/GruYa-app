@@ -19,5 +19,7 @@ namespace GruYaApi.DTOs.Responses
         public string Insurance { get; set; } = null!;
 
         public string Color { get; set; } = null!;
+
+        public string? ImageUrl { get; set; }
     }
 }

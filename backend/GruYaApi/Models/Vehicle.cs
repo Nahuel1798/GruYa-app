@@ -26,5 +26,6 @@ namespace GruYaApi.Models
         public string Insurance { get; set; } = null!;
         [Required]
         public string Color { get; set; } = null!;
+        public string? ImageUrl { get; set; }
     }
 }

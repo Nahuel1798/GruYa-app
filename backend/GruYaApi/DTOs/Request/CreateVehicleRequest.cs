@@ -22,5 +22,6 @@ namespace GruYaApi.DTOs.Requests
 
         [Required]
         public string Color { get; set; } = null!;
+        public string? ImageUrl { get; set; }
     }
 }
