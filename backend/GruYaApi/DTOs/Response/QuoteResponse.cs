@@ -11,6 +11,7 @@ namespace GruYaApi.DTOs.Responses
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public string ProviderName { get; set; } = "";
+        public string? ProviderPhone { get; set; }
         public AssistanceResponse? Assistance { get; set; }
     }
 }

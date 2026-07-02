@@ -86,6 +86,7 @@ namespace GruYaApi.Controllers
                     UpdatedAt = q.UpdatedAt,
                     ProviderName =
                         $"{q.ProviderProfile.User.FirstName} {q.ProviderProfile.User.LastName}",
+                    ProviderPhone = q.ProviderProfile.User.Phone,
                     Assistance = q.Assistance.Adapt<AssistanceResponse>(),
                 })
                 .ToList();
