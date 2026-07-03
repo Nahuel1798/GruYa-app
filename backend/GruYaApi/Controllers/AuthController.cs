@@ -139,6 +139,48 @@ namespace GruYaApi.Controllers
             return Ok(user.Adapt<UserResponse>());
         }
 
+        [HttpPost("avatar")]
+        [DisableRequestSizeLimit]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadAvatar([FromForm] IFormFile? avatar)
+        {
+            if (avatar == null || avatar.Length == 0)
+                return BadRequest(new { message = "No se recibió ninguna imagen" });
+
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+                return NotFound(new { message = "Usuario no encontrado" });
+
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "avatars");
+            Directory.CreateDirectory(uploadsFolder);
+
+            if (!string.IsNullOrWhiteSpace(user.AvatarUrl))
+            {
+                var oldRelative = user.AvatarUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+                var oldPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", oldRelative);
+                if (System.IO.File.Exists(oldPath))
+                {
+                    System.IO.File.Delete(oldPath);
+                }
+            }
+
+            var ext = Path.GetExtension(avatar.FileName);
+            var fileName = $"{Guid.NewGuid()}{ext}";
+            var filePath = Path.Combine(uploadsFolder, fileName);
+
+            await using (var stream = System.IO.File.Create(filePath))
+            {
+                await avatar.CopyToAsync(stream);
+            }
+
+            user.AvatarUrl = $"/images/avatars/{fileName}";
+            await _context.SaveChangesAsync();
+
+            return Ok(user.Adapt<UserResponse>());
+        }
+
         // POST: api/auth/logout
         [HttpPost("logout")]
         public IActionResult Logout()
@@ -158,7 +200,9 @@ namespace GruYaApi.Controllers
         [HttpPatch("password")]
         public async Task<IActionResult> UpdatePassword(UpdatePasswordRequest request)
         {
-            var userId = (int)HttpContext.Items[UserIdKey!];
+            var userIdValue = HttpContext.Items[UserIdKey];
+            if (userIdValue is not int userId)
+                return Unauthorized(new { message = "Usuario no autenticado" });
 
             var user = await _context.Users.FindAsync(userId);
 
