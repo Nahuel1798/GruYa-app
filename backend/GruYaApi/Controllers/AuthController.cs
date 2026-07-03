@@ -23,6 +23,11 @@ namespace GruYaApi.Controllers
         private readonly HashService _hashService;
         private const string UserIdKey = "idUsuario";
 
+        private static string NormalizeEmail(string? email)
+        {
+            return email?.Trim().ToLowerInvariant() ?? string.Empty;
+        }
+
         public AuthController(
             DataContext context,
             JwtTokenService jwtTokenService,
@@ -42,11 +47,14 @@ namespace GruYaApi.Controllers
             if (request.Role != Role.User && request.Role != Role.Provider)
                 return BadRequest(new { message = "Rol inválido. Solo se permiten los roles User y Provider" });
 
-            var existe = await _context.Users.AnyAsync(u => u.Email == request.Email);
+            var normalizedEmail = NormalizeEmail(request.Email);
+
+            var existe = await _context.Users.AnyAsync(u => u.Email == normalizedEmail);
             if (existe)
                 return BadRequest(new { message = "Email esta registrado" });
 
             var nuevoUsuario = request.Adapt<User>();
+            nuevoUsuario.Email = normalizedEmail;
             nuevoUsuario.Password = _hashService.HashPassword(request.Password);
 
             _context.Users.Add(nuevoUsuario);
@@ -63,7 +71,8 @@ namespace GruYaApi.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginRequest request)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+            var normalizedEmail = NormalizeEmail(request.Email);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail);
 
             if (user == null || !_hashService.VerifyPassword(request.Password, user.Password))
                 return Unauthorized(new { message = "Email o contraseña incorrectos" });
@@ -120,8 +129,10 @@ namespace GruYaApi.Controllers
             if (user == null)
                 return NotFound(new { message = "Usuario no encontrado" });
 
+            var normalizedEmail = NormalizeEmail(request.Email);
+
             var emailExists = await _context.Users.AnyAsync(u =>
-                u.Email == request.Email && u.Id != user.Id
+                u.Email == normalizedEmail && u.Id != user.Id
             );
 
             if (emailExists)
@@ -131,7 +142,7 @@ namespace GruYaApi.Controllers
 
             user.FirstName = request.FirstName;
             user.LastName = request.LastName;
-            user.Email = request.Email;
+            user.Email = normalizedEmail;
             user.Phone = request.Phone;
 
             await _context.SaveChangesAsync();
@@ -190,9 +201,15 @@ namespace GruYaApi.Controllers
         }
 
         [HttpGet("validate")]
-        public IActionResult ValidateJwt()
+        public async Task<IActionResult> ValidateJwt()
         {
-            return Ok();
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            var user = await _context.Users
+                .ProjectToType<UserResponse>()
+                .FirstOrDefaultAsync(x => x.Id == userId);
+
+            return Ok(user);
         }
 
         // PATCH: api/auth/password
