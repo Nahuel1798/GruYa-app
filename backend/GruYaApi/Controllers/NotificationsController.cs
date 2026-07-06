@@ -99,6 +99,20 @@ public class NotificationsController : ControllerBase
         });
     }
 
+    // GET: api/notifications/unread-count
+    // Devuelve la cantidad de notificaciones no leídas del usuario autenticado.
+    [HttpGet("unread-count")]
+    public async Task<IActionResult> GetUnreadCount()
+    {
+        var userId = (int)HttpContext.Items["idUsuario"]!;
+
+        var count = await _context
+            .Notifications
+            .CountAsync(n => n.UserId == userId && n.ReadAt == null);
+
+        return Ok(new { UnreadCount = count });
+    }
+
     // PATCH: api/notifications/read-all
     // Marca todas las notificaciones no leídas del usuario como leídas.
     [HttpPatch("read-all")]
