@@ -53,6 +53,14 @@ namespace GruYaApi.Data
                     .OnDelete(DeleteBehavior.SetNull);
             });
 
+            modelBuilder.Entity<Payment>(entity =>
+            {
+                entity.HasOne(p => p.Assistance)
+                    .WithOne(a => a.Payment)
+                    .HasForeignKey<Payment>(p => p.AssistanceId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
             modelBuilder.Entity<Notification>(entity =>
             {
                 entity.ToTable("Notifications");

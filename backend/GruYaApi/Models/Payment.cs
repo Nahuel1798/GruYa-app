@@ -12,7 +12,13 @@ namespace GruYaApi.Models
 
         [Required]
         public PaymentMethod Method { get; set; }
+        public PaymentStatus Status { get; set; } 
 
         public DateTime Date { get; set; } = DateTime.Now;
+
+        // FK
+        public int AssistanceId { get; set; }
+
+        public Assistance Assistance { get; set; } = null!;
     }
 }

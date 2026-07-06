@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using FirebaseAdmin.Auth;
 using GruYaApi.Data;
 using GruYaApi.DTOs.Request;
 using GruYaApi.DTOs.Requests;
@@ -86,6 +87,90 @@ namespace GruYaApi.Controllers
             }
 
             return Ok(new AuthResponse { Token = token, User = user.Adapt<UserResponse>() });
+        }
+
+        // POST: api/auth/google-login
+        [AllowAnonymous]
+        [HttpPost("google-login")]
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.IdToken))
+                return BadRequest(new { message = "El token de Google es requerido" });
+
+            try
+            {
+                var firebaseToken = await FirebaseAuth.DefaultInstance.VerifyIdTokenAsync(request.IdToken);
+
+                var email = NormalizeEmail(
+                    firebaseToken.Claims.TryGetValue("email", out var emailClaim)
+                        ? emailClaim?.ToString()
+                        : null
+                );
+
+                if (string.IsNullOrWhiteSpace(email))
+                    return Unauthorized(new { message = "No se pudo obtener el email del token de Google" });
+
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+
+                if (user == null)
+                {
+                    var fullName = firebaseToken.Claims.TryGetValue("name", out var nameClaim)
+                        ? nameClaim?.ToString()
+                        : null;
+                    var picture = firebaseToken.Claims.TryGetValue("picture", out var pictureClaim)
+                        ? pictureClaim?.ToString()
+                        : null;
+
+                    var nameParts = (fullName ?? email.Split('@')[0]).Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+
+                    user = new User
+                    {
+                        FirstName = nameParts.Length > 0 ? nameParts[0] : "Google",
+                        LastName = nameParts.Length > 1 ? nameParts[1] : "User",
+                        Email = email,
+                        Password = _hashService.HashPassword(Guid.NewGuid().ToString("N")),
+                        Role = Role.User,
+                        AvatarUrl = picture,
+                    };
+
+                    _context.Users.Add(user);
+                }
+                else
+                {
+                    if (!string.IsNullOrWhiteSpace(request.FcmToken))
+                    {
+                        user.FcmToken = request.FcmToken;
+                    }
+
+                    var fullName = firebaseToken.Claims.TryGetValue("name", out var nameClaim)
+                        ? nameClaim?.ToString()
+                        : null;
+                    var picture = firebaseToken.Claims.TryGetValue("picture", out var pictureClaim)
+                        ? pictureClaim?.ToString()
+                        : null;
+
+                    if (!string.IsNullOrWhiteSpace(fullName) && string.IsNullOrWhiteSpace(user.FirstName) && string.IsNullOrWhiteSpace(user.LastName))
+                    {
+                        var nameParts = fullName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+                        user.FirstName = nameParts.Length > 0 ? nameParts[0] : "Google";
+                        user.LastName = nameParts.Length > 1 ? nameParts[1] : "User";
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(picture) && string.IsNullOrWhiteSpace(user.AvatarUrl))
+                    {
+                        user.AvatarUrl = picture;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                var token = _jwtTokenService.GenerateToken(user);
+                return Ok(new AuthResponse { Token = token, User = user.Adapt<UserResponse>() });
+            }
+            catch (Exception ex)
+            {
+                return Unauthorized(new { message = "Token de Google inválido", detail = ex.Message });
+            }
         }
 
         // GET: api/auth/profile

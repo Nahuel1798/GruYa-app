@@ -31,5 +31,8 @@ namespace GruYaApi.Models
         /// Set when the provider starts the trip.
         /// </summary>
         public string? TrackingSessionId { get; set; }
+
+        // Relación con el pago
+        public Payment? Payment { get; set; }
     }
 }
