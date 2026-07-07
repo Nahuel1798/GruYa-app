@@ -410,6 +410,7 @@ namespace GruYaApi.Controllers
             var assistance = await _context
                 .Assistances.Include(a => a.Client)
                 .Include(a => a.Provider)
+                .Include(a => a.Payment)
                 .FirstOrDefaultAsync(a => a.Id == id);
 
             if (assistance == null)
@@ -428,6 +429,9 @@ namespace GruYaApi.Controllers
 
             if (assistance.Status != AssistanceStatus.EnCaminoAlDestino)
                 return Conflict(new { Message = "La asistencia no está en camino al destino" });
+
+            if (assistance.Payment == null)
+                return Conflict(new { Message = "No se puede completar la asistencia sin un pago registrado" });
 
             assistance.Status = AssistanceStatus.Completado;
             assistance.TrackingSessionId = null;
@@ -595,10 +599,6 @@ namespace GruYaApi.Controllers
 
             if (assistance == null)
                 return NotFound();
-            if (assistance == null)
-            {
-                return NotFound(new { Message = "No se encontró una asistencia activa" });
-            }
             assistance.Status = AssistanceStatus.Cancelado;
             await _context.SaveChangesAsync();
 

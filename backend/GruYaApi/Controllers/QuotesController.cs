@@ -214,6 +214,63 @@ namespace GruYaApi.Controllers
             return Ok(await MapToResponseAsync(query));
         }
 
+        // GET /api/quotes/accepted/{assistanceId} — Get the accepted quote for an assistance
+        // Solo el cliente propietario o el proveedor asignado pueden consultarlo.
+        [HttpGet("accepted/{assistanceId}")]
+        public async Task<IActionResult> GetAcceptedQuote(int assistanceId)
+        {
+            var userId = (int)HttpContext.Items[UserIdKey]!;
+
+            var assistance = await _context
+                .Assistances.Include(a => a.Client)
+                .Include(a => a.Provider)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Id == assistanceId);
+
+            if (assistance == null)
+                return NotFound(new { Message = "Solicitud de auxilio no encontrada" });
+
+            var isClient = assistance.Client.Id == userId;
+            var isProvider = assistance.Provider != null && assistance.Provider.Id == userId;
+
+            if (!isClient && !isProvider)
+                return Forbid();
+
+            var quote = await _context
+                .Quotes.Include(q => q.ProviderProfile)
+                    .ThenInclude(pp => pp.User)
+                .Include(q => q.Assistance)
+                    .ThenInclude(a => a.Client)
+                .Include(q => q.Assistance)
+                    .ThenInclude(a => a.Vehicle)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(q =>
+                    q.AssistanceId == assistanceId
+                    && (q.Status == QuoteStatus.Aceptada || q.Status == QuoteStatus.Completado)
+                );
+
+            if (quote == null)
+                return NotFound(
+                    new { Message = "No hay una cotización aceptada para esta asistencia" }
+                );
+
+            var response = new QuoteResponse
+            {
+                Id = quote.Id,
+                AssistanceId = quote.AssistanceId,
+                Price = quote.Price,
+                Status = quote.Status,
+                CreatedAt = quote.CreatedAt,
+                UpdatedAt = quote.UpdatedAt,
+                ProviderName =
+                    $"{quote.ProviderProfile.User.FirstName} {quote.ProviderProfile.User.LastName}",
+                ProviderPhone = quote.ProviderProfile.User.Phone,
+                Assistance = quote.Assistance.Adapt<AssistanceResponse>(),
+            };
+
+            return Ok(response);
+        }
+
         // GET /api/quotes/requests-for-me — List assistances available for caller to quote
         [HttpGet("requests-for-me")]
         public async Task<IActionResult> GetRequestsForMe()
@@ -318,6 +375,9 @@ namespace GruYaApi.Controllers
                         Message = $"La cotización no está pendiente. Estado actual: {quote.Status}",
                     }
                 );
+
+            if (quote.Assistance.Status != AssistanceStatus.Pendiente)
+                return Conflict(new { Message = "La solicitud de auxilio no está pendiente" });
 
             // Transactional accept
             quote.Status = QuoteStatus.Aceptada;

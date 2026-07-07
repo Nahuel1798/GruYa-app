@@ -73,22 +73,6 @@ namespace GruYaApi.Controllers
 
             _context.Payments.Add(payment);
 
-            if (assistance.Status == AssistanceStatus.EnCaminoAlDestino)
-            {
-                assistance.Status = AssistanceStatus.Completado;
-                assistance.TrackingSessionId = null;
-
-                var acceptedQuote = await _context.Quotes.FirstOrDefaultAsync(q =>
-                    q.AssistanceId == assistance.Id && q.Status == QuoteStatus.Aceptada
-                );
-
-                if (acceptedQuote != null)
-                {
-                    acceptedQuote.Status = QuoteStatus.Completado;
-                    acceptedQuote.UpdatedAt = DateTime.UtcNow;
-                }
-            }
-
             await _context.SaveChangesAsync();
 
             return Ok(payment.Adapt<PaymentResponse>());
