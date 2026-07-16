@@ -15,6 +15,7 @@ namespace GruYaApi.Data
         public DbSet<Vehicle> Vehicles { get; set; }
         public DbSet<Quote> Quotes { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -75,6 +76,15 @@ namespace GruYaApi.Data
                     .WithMany()
                     .HasForeignKey(n => n.AssistanceId)
                     .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<RefreshToken>(entity =>
+            {
+                entity.HasIndex(r => r.TokenHash);
+                entity.HasOne(r => r.User)
+                    .WithMany()
+                    .HasForeignKey(r => r.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }

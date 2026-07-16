@@ -61,10 +61,7 @@ namespace GruYaApi.Controllers
             _context.Users.Add(nuevoUsuario);
             await _context.SaveChangesAsync();
 
-            var token = _jwtTokenService.GenerateToken(nuevoUsuario);
-            return Ok(
-                new AuthResponse { Token = token, User = nuevoUsuario.Adapt<UserResponse>() }
-            );
+            return Ok(await GenerateAuthResponse(nuevoUsuario));
         }
 
         // POST: api/auth/login
@@ -78,15 +75,12 @@ namespace GruYaApi.Controllers
             if (user == null || !_hashService.VerifyPassword(request.Password, user.Password))
                 return Unauthorized(new { message = "Email o contraseña incorrectos" });
 
-            var token = _jwtTokenService.GenerateToken(user);
-
             if (!string.IsNullOrWhiteSpace(request.FcmToken))
             {
                 user.FcmToken = request.FcmToken;
-                await _context.SaveChangesAsync();
             }
 
-            return Ok(new AuthResponse { Token = token, User = user.Adapt<UserResponse>() });
+            return Ok(await GenerateAuthResponse(user));
         }
 
         // POST: api/auth/google-login
@@ -164,8 +158,7 @@ namespace GruYaApi.Controllers
 
                 await _context.SaveChangesAsync();
 
-                var token = _jwtTokenService.GenerateToken(user);
-                return Ok(new AuthResponse { Token = token, User = user.Adapt<UserResponse>() });
+                return Ok(await GenerateAuthResponse(user));
             }
             catch (Exception ex)
             {
@@ -277,6 +270,31 @@ namespace GruYaApi.Controllers
             return Ok(user.Adapt<UserResponse>());
         }
 
+        // POST: api/auth/refresh
+        [AllowAnonymous]
+        [HttpPost("refresh")]
+        public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.RefreshToken))
+                return BadRequest(new { message = "Refresh token es requerido" });
+
+            var tokenHash = _jwtTokenService.HashRefreshToken(request.RefreshToken);
+
+            var storedToken = await _context.RefreshTokens
+                .Include(rt => rt.User)
+                .FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash);
+
+            if (storedToken == null || !storedToken.IsActive)
+                return Unauthorized(new { message = "Refresh token inválido o expirado" });
+
+            storedToken.RevokedAt = DateTime.UtcNow;
+
+            var user = storedToken.User;
+            var authResponse = await GenerateAuthResponse(user);
+
+            return Ok(authResponse);
+        }
+
         // POST: api/auth/logout
         [HttpPost("logout")]
         public IActionResult Logout()
@@ -315,6 +333,31 @@ namespace GruYaApi.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Contraseña actualizada exitosamente" });
+        }
+
+        private async Task<AuthResponse> GenerateAuthResponse(User user)
+        {
+            var token = _jwtTokenService.GenerateToken(user);
+
+            var rawRefreshToken = _jwtTokenService.GenerateRefreshToken();
+            var refreshTokenEntity = new RefreshToken
+            {
+                UserId = user.Id,
+                TokenHash = _jwtTokenService.HashRefreshToken(rawRefreshToken),
+                ExpiresAt = DateTime.UtcNow.AddDays(7),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.RefreshTokens.Add(refreshTokenEntity);
+            await _context.SaveChangesAsync();
+
+            return new AuthResponse
+            {
+                Token = token,
+                User = user.Adapt<UserResponse>(),
+                RefreshToken = rawRefreshToken,
+                RefreshTokenExpiresAt = refreshTokenEntity.ExpiresAt
+            };
         }
 
         // PATCH: api/auth/fcm-token
