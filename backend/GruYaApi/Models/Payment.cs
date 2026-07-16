@@ -14,7 +14,7 @@ namespace GruYaApi.Models
         public PaymentMethod Method { get; set; }
         public PaymentStatus Status { get; set; } 
 
-        public DateTime Date { get; set; } = DateTime.Now;
+        public DateTime Date { get; set; } = DateTime.UtcNow;
 
         // FK
         public int AssistanceId { get; set; }
