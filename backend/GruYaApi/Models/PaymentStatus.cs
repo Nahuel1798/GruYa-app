@@ -4,7 +4,6 @@ namespace GruYaApi.Models
     {
         Pendiente,
         Pagado,
-        Fallido,
-        Reembolsado
+        Fallido
     }
 }
