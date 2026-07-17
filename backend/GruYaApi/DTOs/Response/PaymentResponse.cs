@@ -9,6 +9,7 @@ namespace GruYaApi.DTOs.Responses
         public decimal Amount { get; set; }
 
         public PaymentMethod Method { get; set; }
+        public PaymentStatus Status { get; set; }
 
         public DateTime Date { get; set; }
     }
