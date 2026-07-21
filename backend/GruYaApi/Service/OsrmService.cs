@@ -1,13 +1,22 @@
+using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
 
 namespace GruYaApi.Services;
+
+public class RouteInstruction
+{
+    public string Text { get; set; } = "";
+    public double DistanceMeters { get; set; }
+    public double DurationSeconds { get; set; }
+}
 
 public class RouteInfo
 {
     public double DistanceKm { get; set; }
     public double EtaMinutes { get; set; }
     public string GeometryJson { get; set; } = "";
+    public List<RouteInstruction> Instructions { get; set; } = new();
 }
 
 public class OsrmService
@@ -35,21 +44,11 @@ public class OsrmService
             $"{originLat.ToString(CultureInfo.InvariantCulture)};" +
             $"{destLon.ToString(CultureInfo.InvariantCulture)}," +
             $"{destLat.ToString(CultureInfo.InvariantCulture)}" +
-            "?overview=full&geometries=geojson";
-
-        _logger.LogInformation(
-            "Consultando OSRM. Origin=({OriginLat},{OriginLon}) Dest=({DestLat},{DestLon})",
-            originLat,
-            originLon,
-            destLat,
-            destLon);
-
-        _logger.LogInformation("OSRM URL: {Url}", url);
+            "?overview=full&geometries=geojson&steps=true";
 
         try
         {
             var httpResponse = await _httpClient.GetAsync(url);
-
             var content = await httpResponse.Content.ReadAsStringAsync();
 
             _logger.LogInformation("URL: {Url}", url);
@@ -64,6 +63,7 @@ public class OsrmService
                 {
                     PropertyNameCaseInsensitive = true
                 });
+
             if (response == null)
             {
                 _logger.LogError("OSRM devolvió respuesta nula");
@@ -81,31 +81,75 @@ public class OsrmService
             }
 
             var route = response.Routes[0];
-
-            var geometryJson =
-                JsonSerializer.Serialize(
-                    route.Geometry.Coordinates);
+            var instructions = BuildInstructions(route.Legs);
+            var geometryJson = JsonSerializer.Serialize(route.Geometry.Coordinates);
 
             _logger.LogInformation(
-                "Ruta obtenida. Distancia={Distance}m Duracion={Duration}s GeometriaChars={GeometryLength}",
+                "Ruta obtenida. Distancia={Distance}m Duracion={Duration}s GeometriaChars={GeometryLength} Pasos={StepsCount}",
                 route.Distance,
                 route.Duration,
-                geometryJson.Length);
+                geometryJson.Length,
+                instructions.Count);
 
             return new RouteInfo
             {
                 DistanceKm = route.Distance / 1000,
                 EtaMinutes = route.Duration / 60,
-                GeometryJson = geometryJson
+                GeometryJson = geometryJson,
+                Instructions = instructions
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Error consultando OSRM");
-
+            _logger.LogError(ex, "Error consultando OSRM");
             throw;
         }
+    }
+
+    private static List<RouteInstruction> BuildInstructions(List<LegData>? legs)
+    {
+        var instructions = new List<RouteInstruction>();
+
+        if (legs == null)
+            return instructions;
+
+        foreach (var leg in legs)
+        {
+            if (leg.Steps == null)
+                continue;
+
+            foreach (var step in leg.Steps)
+            {
+                var text = !string.IsNullOrWhiteSpace(step.Maneuver.Instruction)
+                    ? step.Maneuver.Instruction!
+                    : BuildStepDescription(step);
+
+                instructions.Add(new RouteInstruction
+                {
+                    Text = text,
+                    DistanceMeters = step.Distance,
+                    DurationSeconds = step.Duration
+                });
+            }
+        }
+
+        return instructions;
+    }
+
+    private static string BuildStepDescription(StepData step)
+    {
+        var parts = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(step.Maneuver.Type))
+            parts.Add(step.Maneuver.Type);
+
+        if (!string.IsNullOrWhiteSpace(step.Maneuver.Modifier))
+            parts.Add(step.Maneuver.Modifier);
+
+        if (!string.IsNullOrWhiteSpace(step.Name))
+            parts.Add($"hacia {step.Name}");
+
+        var description = string.Join(' ', parts).Trim();
+        return string.IsNullOrWhiteSpace(description) ? "Continuar" : description;
     }
 }

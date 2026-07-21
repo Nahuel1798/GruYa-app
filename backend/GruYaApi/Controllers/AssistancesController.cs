@@ -9,6 +9,7 @@ using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace GruYaApi.Controllers
 {
@@ -507,6 +508,9 @@ namespace GruYaApi.Controllers
                         DistanceKm = providerToOriginRoute.DistanceKm,
                         EtaMinutes = providerToOriginRoute.EtaMinutes,
                         GeometryJson = providerToOriginRoute.GeometryJson,
+                        Instructions = providerToOriginRoute.Instructions
+                            .Select(i => i.Text)
+                            .ToList(),
                     };
 
                     var providerToDestinationRoute = await _osrmService.GetRouteInfoAsync(
@@ -521,6 +525,9 @@ namespace GruYaApi.Controllers
                         DistanceKm = providerToDestinationRoute.DistanceKm,
                         EtaMinutes = providerToDestinationRoute.EtaMinutes,
                         GeometryJson = providerToDestinationRoute.GeometryJson,
+                        Instructions = providerToDestinationRoute.Instructions
+                            .Select(i => i.Text)
+                            .ToList(),
                     };
                 }
                 catch (Exception ex)
@@ -546,6 +553,9 @@ namespace GruYaApi.Controllers
                     DistanceKm = originToDestination.DistanceKm,
                     EtaMinutes = originToDestination.EtaMinutes,
                     GeometryJson = originToDestination.GeometryJson,
+                    Instructions = originToDestination.Instructions
+                        .Select(i => i.Text)
+                        .ToList(),
                 },
                 ProviderToDestination = providerToDestination,
             };

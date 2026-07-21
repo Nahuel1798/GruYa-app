@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace GruYaApi.DTOs.Responses
 {
     public class RouteLegResponse
@@ -5,6 +7,7 @@ namespace GruYaApi.DTOs.Responses
         public double DistanceKm { get; set; }
         public double EtaMinutes { get; set; }
         public string GeometryJson { get; set; } = string.Empty;
+        public List<string> Instructions { get; set; } = new();
     }
 
     public class AssistanceRouteResponse
