@@ -65,6 +65,7 @@ namespace GruYaApi.Controllers
         // POST: api/vehicles
         [HttpPost]
         [DisableRequestSizeLimit]
+        [Consumes("multipart/form-data")]
         public async Task<ActionResult<VehicleResponse>> CreateVehicle([FromForm] CreateVehicleRequest request, IFormFile? image)
         {
             var userId = (int)HttpContext.Items[UserIdKey]!;
@@ -107,6 +108,7 @@ namespace GruYaApi.Controllers
         // PUT: api/vehicles/5
         [HttpPut("{id}")]
         [DisableRequestSizeLimit]
+        [Consumes("multipart/form-data")]
         public async Task<ActionResult<VehicleResponse>> UpdateVehicle(int id, [FromForm] UpdateVehicleRequest request, IFormFile? image)
         {
             var userId = (int)HttpContext.Items[UserIdKey]!;

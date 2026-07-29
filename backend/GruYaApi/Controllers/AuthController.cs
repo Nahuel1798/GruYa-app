@@ -231,7 +231,7 @@ namespace GruYaApi.Controllers
         [HttpPost("avatar")]
         [DisableRequestSizeLimit]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> UploadAvatar([FromForm] IFormFile? avatar)
+        public async Task<IActionResult> UploadAvatar(IFormFile? avatar)
         {
             if (avatar == null || avatar.Length == 0)
                 return BadRequest(new { message = "No se recibió ninguna imagen" });
